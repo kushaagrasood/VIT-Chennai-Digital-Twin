@@ -214,6 +214,48 @@
         </div>
       </div>
 
+      
+      <!-- Section 2: Campus Route Planner -->
+      <div class="route-planner-section">
+        <div class="evac-header">
+          <div class="evac-title-row">
+            <span class="evac-tag">WAYFINDER</span>
+            <h3>Campus Route Planner</h3>
+          </div>
+          <span class="evac-sub">
+            Find and compare alternative routes between campus locations
+          </span>
+        </div>
+
+        <div class="route-planner-controls">
+          <label for="nav-from">Starting location</label>
+          <select id="nav-from" class="select-input">
+            <option value="">Choose starting location</option>
+          </select>
+
+          <label for="nav-to">Destination</label>
+          <select id="nav-to" class="select-input">
+            <option value="">Choose destination</option>
+          </select>
+
+          <div class="evac-btn-row">
+            <button id="nav-find-btn" class="action-btn-primary">
+              Find Routes
+            </button>
+            <button id="nav-clear-btn" class="action-btn-secondary">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div id="nav-route-status" class="route-status" aria-live="polite">
+          Choose two locations to plan your journey.
+        </div>
+
+        <div id="nav-route-results" class="nav-route-results"></div>
+      </div>
+
+
       <!-- Section 2: Evacuation Routing Demonstration -->
       <div class="evacuation-section">
         <div class="evac-header">

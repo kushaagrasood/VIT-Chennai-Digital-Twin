@@ -16,6 +16,8 @@ export class UIController {
     this.searchQuery = '';
     this.currentEvacRouteIndex = 0;
     this.evacRoutes = [];
+    this.navigationRoutes = [];
+    this.selectedNavigationRouteIndex = -1; 
 
     this.dom = {
       // Search & Filters
@@ -48,6 +50,15 @@ export class UIController {
       threshModInput: document.getElementById('config-mod-thresh'),
       threshHighInput: document.getElementById('config-high-thresh'),
       saveConfigBtn: document.getElementById('config-save-btn'),
+
+      
+      // Campus Route Planner
+      navFrom: document.getElementById('nav-from'),
+      navTo: document.getElementById('nav-to'),
+      navFindBtn: document.getElementById('nav-find-btn'),
+      navClearBtn: document.getElementById('nav-clear-btn'),
+      navRouteStatus: document.getElementById('nav-route-status'),
+      navRouteResults: document.getElementById('nav-route-results'),
 
       // Evacuation
       evacExitSelect: document.getElementById('evac-exit-select'),
@@ -82,6 +93,7 @@ export class UIController {
 
     this.bindEvents();
     this.renderBuildingList();
+    this.initNavigationPlanner();
     this.initEvacuationRoutes();
     this.subscribeTwinEngine();
   }
@@ -165,6 +177,21 @@ export class UIController {
       });
     }
 
+    
+    // Campus route planner controls
+    if (this.dom.navFindBtn) {
+      this.dom.navFindBtn.addEventListener('click', () => {
+        this.findNavigationRoutes();
+      });
+    }
+
+    if (this.dom.navClearBtn) {
+      this.dom.navClearBtn.addEventListener('click', () => {
+        this.clearNavigationRoutes();
+      });
+    }
+
+
     // 6. Evacuation controls
     if (this.dom.evacTriggerBtn) {
       this.dom.evacTriggerBtn.addEventListener('click', () => {
@@ -176,14 +203,20 @@ export class UIController {
         this.clearEvacuationDemo();
       });
     }
-    if (this.dom.evacExitSelect) {
-      this.dom.evacExitSelect.addEventListener('change', (e) => {
-        this.currentEvacRouteIndex = Number(e.target.value);
-        if (this.dom.evacResultCard && !this.dom.evacResultCard.classList.contains('hidden')) {
-          this.displaySelectedEvacuationRoute();
-        }
-      });
-    }
+    
+  if (this.dom.evacExitSelect) {
+    this.dom.evacExitSelect.addEventListener('change', () => {
+      this.updateEvacuationRoutes();
+
+      if (
+        this.dom.evacResultCard &&
+        !this.dom.evacResultCard.classList.contains('hidden')
+      ) {
+        this.displaySelectedEvacuationRoute();
+      }
+    });
+  }
+
 
     // 7. Modals
     if (this.dom.btnShowDiagnostics) {
@@ -281,6 +314,8 @@ export class UIController {
     const b = this.graph.buildings.get(key);
     if (!b) return;
 
+    this.updateEvacuationRoutes();
+
     // Highlight in 3D (and optionally focus camera)
     if (shouldFocusCamera) {
       this.scene.focusBuilding(key);
@@ -308,6 +343,50 @@ export class UIController {
       }
     }
   }
+
+  
+  initNavigationPlanner() {
+    const selects = [this.dom.navFrom, this.dom.navTo];
+
+    if (selects.some(select => !select)) return;
+
+    const buildings = Array.from(this.graph.buildings.values())
+      .filter(building =>
+        this.graph.getBuildingEntrances(building.key).length > 0
+      )
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+
+    selects.forEach((select, index) => {
+      select.innerHTML = '';
+
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = index === 0
+        ? 'Choose starting location'
+        : 'Choose destination';
+
+      select.appendChild(placeholder);
+
+      buildings.forEach(building => {
+        const option = document.createElement('option');
+        option.value = building.key;
+        option.textContent =
+          `${building.displayName} (${building.primaryEntranceId || 'Entrance'})`;
+
+        select.appendChild(option);
+      });
+    });
+
+    // Start with the currently selected building as the origin.
+    if (this.graph.buildings.has(this.selectedBuildingKey)) {
+      this.dom.navFrom.value = this.selectedBuildingKey;
+    }
+
+    if (this.dom.navTo.value === this.dom.navFrom.value) {
+      this.dom.navTo.value = '';
+    }
+  }
+
 
   subscribeTwinEngine() {
     this.twin.subscribe((state) => {
@@ -373,48 +452,297 @@ export class UIController {
     });
   }
 
-  initEvacuationRoutes() {
-    // Mahatma Gandhi Auditorium entrance is WP 199
-    // Compute paths to exits: Main Gate (WP 111 & 188), 2nd Gate (WP 33)
-    this.evacRoutes = this.graph.findEvacuationRoutes('199', ['33', '188', '111']);
+  
+  findNavigationRoutes() {
+    const fromKey = this.dom.navFrom?.value;
+    const toKey = this.dom.navTo?.value;
 
-    if (this.dom.evacExitSelect) {
-      this.dom.evacExitSelect.innerHTML = '';
-      this.evacRoutes.forEach((route, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        const gateLabel = route.exitId === '33' ? '2nd Gate' : 'Main Gate';
-        opt.textContent = `${gateLabel} (WP ${route.exitId}) — ${route.distanceMeters}m (${route.path.length} waypoints)`;
-        this.dom.evacExitSelect.appendChild(opt);
+    if (!fromKey || !toKey) {
+      this.setNavigationStatus('Choose both a starting location and a destination.');
+      return;
+    }
+
+    if (fromKey === toKey) {
+      this.setNavigationStatus('Choose two different locations.');
+      return;
+    }
+
+    const fromBuilding = this.graph.buildings.get(fromKey);
+    const toBuilding = this.graph.buildings.get(toKey);
+
+    if (!fromBuilding || !toBuilding) {
+      this.setNavigationStatus('The selected location could not be found.');
+      return;
+    }
+
+    const starts = this.graph.getBuildingEntrances(fromKey);
+    const goals = this.graph.getBuildingEntrances(toKey);
+
+    if (!starts.length || !goals.length) {
+      this.setNavigationStatus('One of these locations has no mapped entrance.');
+      return;
+    }
+
+    // Search from each origin entrance to each destination entrance.
+    const candidates = [];
+    const seenPaths = new Set();
+
+    for (const startId of starts) {
+      for (const goalId of goals) {
+        if (startId === goalId) continue;
+
+        const routes = this.graph.findAlternativePaths(startId, goalId, 3);
+
+        for (const route of routes) {
+          const signature = route.path.join('->');
+
+          if (seenPaths.has(signature)) continue;
+          seenPaths.add(signature);
+
+          candidates.push({
+            ...route,
+            startId,
+            goalId,
+            fromKey,
+            toKey
+          });
+        }
+      }
+    }
+
+    candidates.sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+    this.navigationRoutes = candidates.slice(0, 3);
+    this.selectedNavigationRouteIndex = -1;
+
+    if (!this.navigationRoutes.length) {
+      this.dom.navRouteResults.innerHTML = '';
+      this.setNavigationStatus('No connected route was found between these locations.');
+      return;
+    }
+
+    this.renderNavigationRoutes(fromBuilding, toBuilding);
+    this.setNavigationStatus(
+      `Found ${this.navigationRoutes.length} alternative route(s). Select a route to display it on the 3D campus.`
+    );
+  }
+
+  renderNavigationRoutes(fromBuilding, toBuilding) {
+    const container = this.dom.navRouteResults;
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    this.navigationRoutes.forEach((route, index) => {
+      const card = document.createElement('div');
+      card.className = 'nav-route-card';
+
+      const heading = document.createElement('div');
+      heading.className = 'nav-route-card-header';
+
+      const title = document.createElement('strong');
+      title.textContent = `Route ${index + 1}`;
+
+      const distance = document.createElement('span');
+      distance.className = 'mono-text';
+      distance.textContent = `${route.distanceMeters} graph units`;
+
+      heading.append(title, distance);
+
+      const summary = document.createElement('p');
+      summary.textContent =
+        `${fromBuilding.displayName} → ${toBuilding.displayName}`;
+
+      const nodes = document.createElement('p');
+      nodes.textContent =
+        `${route.path.length} waypoints: ${route.path.join(' → ')}`;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'action-btn-primary';
+      button.textContent = 'Show this route in 3D';
+
+      button.addEventListener('click', () => {
+        this.displayNavigationRoute(index);
       });
+
+      card.append(heading, summary, nodes, button);
+      container.appendChild(card);
+    });
+  }
+
+  displayNavigationRoute(index) {
+    const route = this.navigationRoutes[index];
+    if (!route) return;
+
+    this.selectedNavigationRouteIndex = index;
+
+    // Reuse the existing 3D route renderer.
+    this.navView.displayEvacuationRoute(route.waypoints);
+
+    const cards = this.dom.navRouteResults.querySelectorAll('.nav-route-card');
+    cards.forEach((card, cardIndex) => {
+      card.classList.toggle('selected', cardIndex === index);
+    });
+
+    this.setNavigationStatus(
+      `Displaying Route ${index + 1}: ${route.path.length} waypoints, ${route.distanceMeters} graph units.`
+    );
+
+    console.log('Navigation route displayed:', route);
+  }
+
+  clearNavigationRoutes() {
+    this.navigationRoutes = [];
+    this.selectedNavigationRouteIndex = -1;
+
+    if (this.dom.navRouteResults) {
+      this.dom.navRouteResults.innerHTML = '';
+    }
+
+    this.navView.clearEvacuationRoute();
+    this.setNavigationStatus('Choose two locations to plan your journey.');
+  }
+
+  setNavigationStatus(message) {
+    if (this.dom.navRouteStatus) {
+      this.dom.navRouteStatus.textContent = message;
     }
   }
 
+  
+  initEvacuationRoutes() {
+    // Routes will be calculated for the currently selected building.
+    this.evacRoutes = [];
+    this.updateEvacuationExitOptions();
+    this.updateEvacuationRoutes();
+  }
+
+  updateEvacuationExitOptions() {
+    if (!this.dom.evacExitSelect) return;
+
+    this.dom.evacExitSelect.innerHTML = '';
+
+    const exits = [
+      { id: '111', label: 'Main Gate — WP 111' },
+      { id: '188', label: 'Main Gate — WP 188' },
+      { id: '33', label: '2nd Gate — WP 33' }
+    ];
+
+    exits.forEach((exit, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = exit.label;
+      option.dataset.exitId = exit.id;
+      this.dom.evacExitSelect.appendChild(option);
+    });
+
+    this.currentEvacRouteIndex = 0;
+  }
+
+  
+  updateEvacuationRoutes() {
+    this.evacRoutes = [];
+    this.currentEvacRouteIndex = 0;
+
+    const building = this.graph.buildings.get(this.selectedBuildingKey);
+    const selectedOption = this.dom.evacExitSelect?.selectedOptions[0];
+    const exitId = selectedOption?.dataset.exitId;
+
+    if (!building || !exitId) return;
+
+    // Get every valid entrance associated with this building.
+    const entrances = this.graph.getBuildingEntrances(this.selectedBuildingKey);
+
+    // Find routes from each entrance to the chosen exit.
+    for (const entranceId of entrances) {
+      const routes = this.graph.findEvacuationRoutes(
+        entranceId,
+        [exitId]
+      );
+
+      for (const route of routes) {
+        this.evacRoutes.push({
+          ...route,
+          entranceId,
+          buildingKey: this.selectedBuildingKey
+        });
+      }
+    }
+
+    // Show the shortest available route first.
+    this.evacRoutes.sort(
+      (a, b) => a.distanceMeters - b.distanceMeters
+    );
+  }
+  
   triggerEvacuationDemo() {
-    if (this.evacRoutes.length === 0) return;
+    this.updateEvacuationRoutes();
+
+    if (this.evacRoutes.length === 0) {
+      console.warn(
+        `No route found from ${this.selectedBuildingKey} to the selected exit.`
+      );
+
+      if (this.dom.evacResultCard) {
+        this.dom.evacResultCard.classList.add('hidden');
+      }
+
+      this.navView.clearEvacuationRoute();
+      return;
+    }
+
+    this.currentEvacRouteIndex = 0;
     this.displaySelectedEvacuationRoute();
   }
 
   displaySelectedEvacuationRoute() {
-    const route = this.evacRoutes[this.currentEvacRouteIndex] || this.evacRoutes[0];
+    const route = this.evacRoutes[this.currentEvacRouteIndex];
+
     if (!route) return;
 
-    // Render in 3D
+    // Draw the route in the 3D campus.
     this.navView.displayEvacuationRoute(route.waypoints);
 
-    // Compute metrics
-    const metrics = this.twin.calculateEvacuationMetrics(route.distanceMeters);
+    const metrics = this.twin.calculateEvacuationMetrics(
+      route.distanceMeters
+    );
 
-    // Update UI card
     if (this.dom.evacResultCard) {
       this.dom.evacResultCard.classList.remove('hidden');
-      this.dom.evacDist.textContent = `${route.distanceMeters} meters`;
-      this.dom.evacHops.textContent = `${route.path.length} waypoints`;
-      this.dom.evacWalkTime.textContent = `${Math.floor(metrics.walkTimeSeconds / 60)}m ${metrics.walkTimeSeconds % 60}s`;
-      this.dom.evacTotalTime.textContent = metrics.formattedTime;
-      this.dom.evacPathNodes.textContent = route.path.join(' ➔ ');
+
+      if (this.dom.evacDist) {
+        this.dom.evacDist.textContent = `${route.distanceMeters} meters`;
+      }
+
+      if (this.dom.evacHops) {
+        this.dom.evacHops.textContent =
+          `${route.path.length} waypoints`;
+      }
+
+      if (this.dom.evacWalkTime) {
+        this.dom.evacWalkTime.textContent =
+          `${Math.floor(metrics.walkTimeSeconds / 60)}m ` +
+          `${metrics.walkTimeSeconds % 60}s`;
+      }
+
+      if (this.dom.evacTotalTime) {
+        this.dom.evacTotalTime.textContent = metrics.formattedTime;
+      }
+
+      if (this.dom.evacPathNodes) {
+        this.dom.evacPathNodes.textContent = route.path.join(' ➔ ');
+      }
     }
+
+    console.log('Evacuation route displayed:', {
+      building: route.buildingKey,
+      entrance: route.entranceId,
+      exit: route.exitId,
+      distanceMeters: route.distanceMeters
+    });
   }
+
 
   clearEvacuationDemo() {
     this.navView.clearEvacuationRoute();

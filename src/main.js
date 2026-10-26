@@ -24,11 +24,109 @@ async function bootstrap() {
       const rawEntrances = await entrancesRes.json();
       const rawOneWayRoads = await oneWayRes.json();
 
+      
       graph.loadWaypoints(rawWaypoints);
       graph.buildGraph(rawOneWayRoads);
       graph.loadBuildingEntrances(rawEntrances);
+
+      
+      // TEST: Find alternative walking routes between two waypoints
+      console.log("Testing alternative route algorithm...");
+
+      if (typeof graph.findAlternativePaths === 'function') {
+        const routes = graph.findAlternativePaths('199', '33', 3);
+
+        console.log("Alternative routes:", routes);
+
+        console.table(
+          routes.map((route, index) => ({
+            route: index + 1,
+            distance: route.distanceMeters,
+            waypointCount: route.path.length,
+            path: route.path.join(' -> ')
+          }))
+        );
+
+        if (routes.length === 0) {
+          console.warn("No routes found between waypoints 199 and 33.");
+        }
+      } else {
+        console.error(
+          "findAlternativePaths() is missing from graph.js"
+        );
+      }
+
+
+      // TEMPORARY: Verify campus gate IDs and road connectivity
+      const gates = [
+        { name: 'Main Gate - Entrance 1', id: '111' },
+        { name: 'Main Gate - Entrance 2', id: '188' },
+        { name: '2nd Gate', id: '33' }
+      ];
+
+      console.table(
+        gates.map(gate => ({
+          gate: gate.name,
+          waypointId: gate.id,
+          exists: graph.waypoints.has(gate.id),
+          neighborCount: (graph.adjacency.get(gate.id) || new Set()).size,
+          neighbors: [
+            ...(graph.adjacency.get(gate.id) || new Set())
+          ].join(', ')
+        }))
+      );
+
+      // Check that the building entrances are loaded correctly
+      
+      // Check that the building entrances are loaded correctly
+      console.log('Loaded buildings:', graph.buildings.size);
+      console.log(
+        'Gate definitions:',
+        graph.getCampusGates?.() ?? 'getCampusGates() not added'
+      );
+
+      // Gate waypoint IDs verified from buildingEntrances.json
+      const gateIds = ['111', '188', '33'];
+
+      // Calculate evacuation routes for every building
+      if (typeof graph.getCampusEvacuationRoutes !== 'function') {
+        console.error(
+          'Missing getCampusEvacuationRoutes() in graph.js. ' +
+          'Add the evacuation route methods inside the WayfinderGraph class.'
+        );
+      } else {
+        const campusRoutes = graph.getCampusEvacuationRoutes(gateIds);
+
+        console.log('Campus evacuation route report:');
+
+        console.table(
+          campusRoutes.map(building => ({
+            building: building.displayName,
+            buildingKey: building.buildingKey,
+            entrances: (building.entrances || []).join(', '),
+            reachable: Boolean(building.nearestExit),
+            nearestGate: building.nearestExit?.exitId ?? 'No route',
+            distance: building.nearestExit?.distanceMeters ?? 'N/A',
+            routesFound: (building.routes || []).length
+          }))
+        );
+
+
+        const unreachable = campusRoutes.filter(
+          building => !building.nearestExit
+        );
+
+        console.log('Total buildings:', campusRoutes.length);
+        console.log(
+          'Buildings with a route:',
+          campusRoutes.length - unreachable.length
+        );
+        console.log('Buildings without a route:', unreachable);
+      }
+
       dataLoaded = true;
       console.log('Wayfinder datasets loaded via primary JSON endpoints.');
+
     }
   } catch (err) {
     console.warn('Direct dataset fetch failed, attempting path.json fallback:', err);
@@ -101,6 +199,77 @@ async function bootstrap() {
       window.__wayfinderGraph = graph;
       window.__twinEngine = twinEngine;
       window.__ui = ui;
+      window.__navView = navView;
+
+      
+      // Temporary density data for every indexed building
+      const densities = new Map();
+
+      [...scene.buildingMeshes.keys()].forEach((key, index) => {
+        densities.set(key, 0.10 + (((index * 37 + 17) % 86) / 100));
+      });
+
+      // Use the existing simulated occupancy for the auditorium.
+      const state = twinEngine.getState();
+
+      if (densities.has('Building024')) {
+        densities.set(
+          'Building024',
+          Math.max(0, Math.min(1, state.occupancy / state.capacity))
+        );
+      }
+
+      scene.setBuildingCrowdDensities(densities);
+
+      // Keep permanent heatmap disabled.
+      scene.setHeatmapEnabled(false);
+
+      console.log(`Density data assigned to ${densities.size} buildings.`);
+
+      
+      // SIMULATED CROWD DENSITY FOR ALL INDEXED BUILDINGS
+      const buildingDensities = new Map();
+
+      const buildingKeys = [...scene.buildingMeshes.keys()];
+
+      buildingKeys.forEach((key, index) => {
+        // Stable, varied demonstration values between 10% and 95%.
+        const density = 0.10 + (
+          ((index * 37 + 17) % 86) / 100
+        );
+
+        buildingDensities.set(key, density);
+      });
+
+      // Make the auditorium reflect the current simulated occupancy.
+      const twinState = twinEngine.getState();
+      const auditoriumDensity = Math.max(
+        0,
+        Math.min(1, twinState.occupancy / twinState.capacity)
+      );
+
+      if (buildingDensities.has('Building024')) {
+        buildingDensities.set('Building024', auditoriumDensity);
+      }
+
+      scene.setBuildingCrowdDensities(buildingDensities);
+
+      // Hover-only coloring; do not enable the permanent heatmap.
+      scene.setHeatmapEnabled(false);
+
+      console.log(
+        `Hover density enabled for ${buildingDensities.size} buildings.`
+      );
+
+
+      //scene.setHeatmapEnabled(true);
+
+      console.log("Heatmap enabled:", scene.heatmapEnabled);
+      console.log(
+        "Density test values:",
+        Object.fromEntries(scene.buildingCrowdDensities)
+      );
+
 
       // Finish loading bar and select Auditorium WITHOUT moving the camera,
       // preserving the initial full-campus framed overview

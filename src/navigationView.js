@@ -229,6 +229,39 @@ export class NavigationView {
     this.evacuationGroup.visible = true;
   }
 
+  
+  /**
+   * Calculate and display a route from a building entrance to a gate.
+   */
+  showBuildingEvacuationRoute(buildingKey, gateIds = ['111', '188', '33']) {
+    const routes = this.graph.findBuildingEvacuationRoutes(
+      buildingKey,
+      gateIds
+    );
+
+    if (!routes || routes.length === 0) {
+      this.clearEvacuationRoute();
+      console.warn(`No evacuation route found for ${buildingKey}`);
+      return null;
+    }
+
+    // Select the shortest route among the available entrances and gates.
+    const route = routes[0];
+
+    this.displayEvacuationRoute(route.waypoints);
+
+    console.log('Displayed evacuation route:', {
+      building: buildingKey,
+      entrance: route.entranceId,
+      gate: route.exitId,
+      distance: route.distanceMeters,
+      waypointCount: route.path.length
+    });
+
+    return route;
+  }
+
+
   clearEvacuationRoute() {
     this.evacuationGroup.clear();
   }

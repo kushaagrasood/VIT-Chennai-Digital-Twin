@@ -18,6 +18,10 @@ export class CampusScene {
     this.selectedBuildingMesh = null;
     this.originalMaterials = new Map();
     this.hoveredBuildingKey = null;
+    this.heatmapEnabled = false;
+    this.buildingCrowdDensities = new Map();
+    this.heatmapMaterials = new Map();
+    this.highlightMaterials = new Map();
 
     // Camera animation state
     this.isTransitioningCamera = false;
@@ -56,6 +60,30 @@ export class CampusScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
     this.container.appendChild(this.renderer.domElement);
+    
+    // Floating crowd-density popup (hidden until hovering a building)
+    this.densityPopup = document.createElement('div');
+
+    Object.assign(this.densityPopup.style, {
+      position: 'fixed',
+      display: 'none',
+      zIndex: '10000',
+      width: '210px',
+      padding: '12px 14px',
+      borderRadius: '12px',
+      background: 'rgba(10, 15, 29, 0.96)',
+      border: '1px solid rgba(148, 163, 184, 0.35)',
+      boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+      color: '#f8fafc',
+      fontFamily: 'Arial, sans-serif',
+      fontSize: '12px',
+      lineHeight: '1.5',
+      pointerEvents: 'none',
+      backdropFilter: 'blur(10px)'
+    });
+
+    document.body.appendChild(this.densityPopup);
+
 
     // 4. Controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -322,51 +350,342 @@ export class CampusScene {
   /**
    * Visually highlight a building mesh with emissive glow
    */
+  
   highlightBuildingMesh(buildingKey) {
-    // Restore previous
-    if (this.selectedBuildingMesh) {
-      const origMat = this.originalMaterials.get(this.selectedBuildingMesh.uuid);
-      if (origMat) {
-        this.selectedBuildingMesh.material = origMat;
+    this.selectedBuildingMesh = buildingKey
+      ? this.buildingMeshes.get(buildingKey) || null
+      : null;
+
+    this.refreshBuildingAppearance();
+  }
+
+  
+  
+  updateHoverHeatmap(buildingKey) {
+    // Restore the previous building's original appearance.
+    if (this.hoveredHeatmapKey) {
+      const previousMesh =
+        this.buildingMeshes.get(this.hoveredHeatmapKey);
+
+      if (previousMesh) {
+        const original =
+          this.originalMaterials.get(previousMesh.uuid);
+
+        if (
+          this.hoveredHeatmapKey ===
+          this.selectedBuildingMesh?.userData.buildingKey
+        ) {
+          previousMesh.material =
+            this.getHighlightMaterial(previousMesh) || original;
+        } else {
+          previousMesh.material = original;
+        }
       }
-      this.selectedBuildingMesh = null;
     }
+
+    this.hoveredHeatmapKey = null;
+    this.hideDensityPopup();
 
     if (!buildingKey) return;
 
     const mesh = this.buildingMeshes.get(buildingKey);
-    if (mesh) {
-      this.selectedBuildingMesh = mesh;
-      const origMat = this.originalMaterials.get(mesh.uuid);
+    const density = this.buildingCrowdDensities.get(buildingKey);
 
-      // Clone material with bright cyan/amber accent
-      if (origMat) {
-        const highlightMat = origMat.clone();
-        highlightMat.emissive = new THREE.Color(buildingKey === 'Building024' ? 0x00d4ff : 0xf59e0b);
-        highlightMat.emissiveIntensity = 0.45;
-        mesh.material = highlightMat;
+    if (!mesh || density === undefined) return;
+
+    const material = this.getHeatmapMaterial(mesh);
+    if (!material) return;
+
+    const color = this.getDensityColor(density);
+
+    const applyColor = (mat) => {
+      if (mat.color) mat.color.setHex(color);
+      if (mat.emissive) {
+        mat.emissive.setHex(color);
+        mat.emissiveIntensity = 0.3;
+      }
+    };
+
+    if (Array.isArray(material)) {
+      material.forEach(applyColor);
+    } else {
+      applyColor(material);
+    }
+
+    mesh.material = material;
+    this.hoveredHeatmapKey = buildingKey;
+
+    this.showDensityPopup(
+      buildingKey,
+      this.lastPointerX ?? 0,
+      this.lastPointerY ?? 0
+    );
+  }
+
+  
+  /**
+   * Update crowd-density values for buildings.
+   * densityByBuilding can be a Map or a plain object.
+   * Each density is between 0 and 1.
+   */
+  setBuildingCrowdDensities(densityByBuilding) {
+    this.buildingCrowdDensities.clear();
+
+    const entries = densityByBuilding instanceof Map
+      ? densityByBuilding.entries()
+      : Object.entries(densityByBuilding || {});
+
+    for (const [key, value] of entries) {
+      this.buildingCrowdDensities.set(
+        key,
+        Math.max(0, Math.min(1, Number(value) || 0))
+      );
+    }
+
+    if (this.heatmapEnabled) {
+      this.refreshBuildingAppearance();
+    }
+  }
+
+  setHeatmapEnabled(enabled) {
+    this.heatmapEnabled = Boolean(enabled);
+    this.refreshBuildingAppearance();
+  }
+
+  /**
+   * Density colors:
+   * Blue = low, green = moderate,
+   * yellow = high, red = very high.
+   */
+  getDensityColor(density) {
+    if (density < 0.25) return 0x22aaff;
+    if (density < 0.50) return 0x22cc88;
+    if (density < 0.75) return 0xffcc33;
+    return 0xff3344;
+  }
+
+  
+  getDensityStatus(density) {
+    if (density < 0.25) {
+      return { label: 'LOW', color: '#22aaff' };
+    }
+    if (density < 0.50) {
+      return { label: 'MODERATE', color: '#22cc88' };
+    }
+    if (density < 0.75) {
+      return { label: 'HIGH', color: '#ffcc33' };
+    }
+    return { label: 'VERY HIGH', color: '#ff4455' };
+  }
+
+  showDensityPopup(buildingKey, x, y) {
+    if (!this.densityPopup) return;
+
+    const density = this.buildingCrowdDensities.get(buildingKey);
+
+    if (density === undefined) {
+      this.hideDensityPopup();
+      return;
+    }
+
+    const status = this.getDensityStatus(density);
+    const percentage = Math.round(density * 100);
+
+    this.densityPopup.replaceChildren();
+
+    const title = document.createElement('div');
+    title.textContent = this.getBuildingDisplayName(buildingKey);
+    title.style.cssText =
+      'font-size:14px;font-weight:700;margin-bottom:8px';
+
+    const statusLine = document.createElement('div');
+    statusLine.textContent = `Status: ${status.label}`;
+    statusLine.style.color = status.color;
+
+    const percentageLine = document.createElement('div');
+    percentageLine.textContent = `Simulated density: ${percentage}%`;
+
+    const bar = document.createElement('div');
+    bar.style.cssText =
+      'height:6px;background:#263244;border-radius:5px;margin-top:8px;overflow:hidden';
+
+    const fill = document.createElement('div');
+    fill.style.cssText =
+      `height:100%;width:${percentage}%;background:${status.color}`;
+
+    bar.appendChild(fill);
+
+    const note = document.createElement('div');
+    note.textContent = 'Simulated data · Not live occupancy';
+    note.style.cssText =
+      'font-size:10px;color:#94a3b8;margin-top:8px';
+
+    this.densityPopup.append(title, statusLine, percentageLine, bar, note);
+
+    this.densityPopup.style.left =
+      `${Math.max(8, Math.min(x + 16, window.innerWidth - 235))}px`;
+
+    this.densityPopup.style.top =
+      `${Math.max(8, Math.min(y + 16, window.innerHeight - 145))}px`;
+
+    this.densityPopup.style.display = 'block';
+  }
+
+  hideDensityPopup() {
+    if (this.densityPopup) {
+      this.densityPopup.style.display = 'none';
+    }
+  }
+
+  getBuildingDisplayName(buildingKey) {
+    const buildingNames = {
+        'Building': 'D1 Block Hostel',
+        'Building001': 'Academic Block 3',
+        'Building002': 'A Block hostel',
+        'Building003': 'Academic Block 4',
+        'Building004': 'D2 Block Hostel',
+        'Building005': 'E Block Hostel',
+        'Building006': 'Academic Block 2',
+        'Building007': 'Academic Block 1',
+        'Building008': 'Swimming Pool',
+        'Building009': 'Sigma Block',
+        'Building010': 'GymKhaana',
+        'Building011': 'Admin Block',
+        'Building012': 'North Square',
+        'Building013': 'Alpha Block',
+        'Building014': 'Academic Block 5',
+        'Building015': 'Tennis Court',
+        'Building016': 'Football Ground',
+        'Building017': 'Basketball Court',
+        'Building018': 'Volleyball Court',
+        'Building019': 'Ground',
+        'Building020': 'Omega Block',
+        'Building021': 'Cricket Ground',
+        'Building022': 'Guest House',
+        'Building023': "Student's Parking",
+        'Building024': 'Mahatma Gandhi Auditorium',
+        'Building025': 'VIT-SEDAXIS',
+        'Building026': "Student's Parking 2",
+        'Building027': 'Staff Parking 1',
+        'Building028': 'Staff Parking 2',
+        'Building029': 'Gazebo',
+        'Building030': 'B Block Hostel',
+        'Building031': 'C Block Hostel',
+        'Building032': 'Site Office',
+        'Building033': 'Transport Office',
+        'Main_Gate': 'Main Gate',
+        'Gate': '2nd Gate'
+    };
+
+    return buildingNames[buildingKey] || buildingKey;
+  }
+
+
+  getHeatmapMaterial(mesh) {
+    let material = this.heatmapMaterials.get(mesh.uuid);
+
+    if (!material) {
+      const original = this.originalMaterials.get(mesh.uuid);
+      if (!original) return null;
+
+      const cloneOne = (mat) => {
+        const clone = mat.clone();
+
+        if (clone.color) {
+          clone.color.setHex(0xffffff);
+        }
+
+        if (clone.emissive) {
+          clone.emissive.setHex(0x000000);
+        }
+
+        return clone;
+      };
+
+      material = Array.isArray(original)
+        ? original.map(cloneOne)
+        : cloneOne(original);
+
+      this.heatmapMaterials.set(mesh.uuid, material);
+    }
+
+    return material;
+  }
+
+  getHighlightMaterial(mesh) {
+    let material = this.highlightMaterials.get(mesh.uuid);
+
+    if (!material) {
+      const original = this.originalMaterials.get(mesh.uuid);
+      if (!original) return null;
+
+      const cloneOne = (mat) => {
+        const clone = mat.clone();
+        clone.emissive.setHex(0x00d4ff);
+        clone.emissiveIntensity = 0.45;
+        return clone;
+      };
+
+      material = Array.isArray(original)
+        ? original.map(cloneOne)
+        : cloneOne(original);
+
+      this.highlightMaterials.set(mesh.uuid, material);
+    }
+
+    return material;
+  }
+
+  refreshBuildingAppearance() {
+    for (const [key, mesh] of this.buildingMeshes) {
+      const original = this.originalMaterials.get(mesh.uuid);
+      if (!original) continue;
+
+      if (this.heatmapEnabled) {
+        const material = this.getHeatmapMaterial(mesh);
+        if (!material) continue;
+
+        const density = this.buildingCrowdDensities.get(key) ?? 0;
+
+        const color = this.getDensityColor(density);
+
+        const applyColor = (mat) => {
+          if (mat.color) mat.color.setHex(color);
+          if (mat.emissive) {
+            mat.emissive.setHex(color);
+            mat.emissiveIntensity = 0.22;
+          }
+        };
+
+        if (Array.isArray(material)) material.forEach(applyColor);
+        else applyColor(material);
+
+        // Retain a visible selection accent.
+        const selected = key ===
+          (this.selectedBuildingMesh?.userData.buildingKey);
+
+        if (selected) {
+          const applyHighlight = (mat) => {
+            if (mat.emissive) {
+              mat.emissive.setHex(0x00d4ff);
+              mat.emissiveIntensity = 0.65;
+            }
+          };
+
+          if (Array.isArray(material)) material.forEach(applyHighlight);
+          else applyHighlight(material);
+        }
+
+        mesh.material = material;
+      } else if (key ===
+          this.selectedBuildingMesh?.userData.buildingKey) {
+        mesh.material = this.getHighlightMaterial(mesh) || original;
+      } else {
+        mesh.material = original;
       }
     }
   }
 
-  /**
-   * Smooth camera animation
-   */
-  animateCameraTo(targetPos, targetLookAt, duration = 1000) {
-    const startPos = this.camera.position.clone();
-    const startTarget = this.controls.target.clone();
-    const startTime = performance.now();
-
-    this.isTransitioningCamera = true;
-    this.cameraAnim = {
-      startPos,
-      targetPos: targetPos.clone(),
-      startTarget,
-      targetLookAt: targetLookAt.clone(),
-      startTime,
-      duration
-    };
-  }
 
   setupInteractions() {
     const dom = this.renderer.domElement;
@@ -378,12 +697,16 @@ export class CampusScene {
     });
 
     dom.addEventListener('pointermove', (e) => {
+      this.lastPointerX = e.clientX;
+      this.lastPointerY = e.clientY;
       const rect = dom.getBoundingClientRect();
       this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       this.checkHover();
     });
+
+  
 
     dom.addEventListener('click', (e) => {
       // Disambiguate camera drag/orbit from click (threshold 6px)
@@ -408,6 +731,7 @@ export class CampusScene {
       const bKey = hit.userData.buildingKey;
       if (bKey && bKey !== this.hoveredBuildingKey) {
         this.hoveredBuildingKey = bKey;
+        this.updateHoverHeatmap(bKey);
         this.container.style.cursor = 'pointer';
         if (this.callbacks.onBuildingHover) {
           this.callbacks.onBuildingHover(bKey, hit.userData.rawMeshName);
@@ -416,6 +740,7 @@ export class CampusScene {
     } else {
       if (this.hoveredBuildingKey) {
         this.hoveredBuildingKey = null;
+        this.updateHoverHeatmap(null);
         this.container.style.cursor = 'default';
         if (this.callbacks.onBuildingHover) {
           this.callbacks.onBuildingHover(null, null);

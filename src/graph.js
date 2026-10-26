@@ -20,6 +20,7 @@ export class WayfinderGraph {
       buildingsWithValidEntrances: 0,
       buildingsWithMissingEntrances: []
     };
+
   }
 
   /**
@@ -284,4 +285,277 @@ export class WayfinderGraph {
     routes.sort((a, b) => a.distanceMeters - b.distanceMeters);
     return routes;
   }
-}
+
+  
+  /**
+   * Return all valid waypoint entrances for a building.
+   */
+  getBuildingEntrances(buildingKey) {
+    const building = this.buildings.get(buildingKey);
+    if (!building) return [];
+
+    return building.entranceIds.filter(id =>
+      this.waypoints.has(id)
+    );
+  }
+
+  /**
+   * Find the nearest reachable exit from any entrance
+   * of a building.
+   */
+  findBuildingEvacuationRoutes(
+    buildingKey,
+    exitIds = ['111', '188', '33']
+  ) {
+    const entrances = this.getBuildingEntrances(buildingKey);
+    const routes = [];
+
+    for (const entranceId of entrances) {
+      const routesFromEntrance =
+        this.findEvacuationRoutes(entranceId, exitIds);
+
+      for (const route of routesFromEntrance) {
+        routes.push({
+          buildingKey,
+          entranceId,
+          ...route
+        });
+      }
+    }
+
+    routes.sort(
+      (a, b) => a.distanceMeters - b.distanceMeters
+    );
+
+    return routes;
+  }
+
+  /**
+   * Generate reachable evacuation routes for every
+   * building registered in the graph.
+   */
+  getCampusEvacuationRoutes(
+    exitIds = ['111', '188', '33']
+  ) {
+    const result = [];
+
+    for (const [buildingKey, building] of this.buildings) {
+      const routes = this.findBuildingEvacuationRoutes(
+        buildingKey,
+        exitIds
+      );
+
+      result.push({
+        buildingKey,
+        displayName: building.displayName,
+        entrances: building.entranceIds,
+        routes,
+        nearestExit: routes.length > 0 ? routes[0] : null
+      });
+    }
+
+    return result;
+  }
+
+  getCampusGates() {
+    const gateKeys = ['Main_Gate', 'Gate'];
+    const gates = [];
+
+    for (const key of gateKeys) {
+      const building = this.buildings.get(key);
+
+      if (!building) continue;
+
+      for (const waypointId of building.entranceIds) {
+        gates.push({
+          key,
+          name: building.displayName,
+          waypointId
+        });
+      }
+    }
+
+    return gates;
+  }
+
+  
+  /**
+   * Find the shortest path while excluding specified nodes and edges.
+   * Used internally by the K-shortest-path algorithm.
+   */
+  findPathWithExclusions(startId, goalId, bannedNodes = new Set(), bannedEdges = new Set()) {
+    const start = WayfinderGraph.normalizeId(startId);
+    const goal = WayfinderGraph.normalizeId(goalId);
+
+    if (!this.waypoints.has(start) || !this.waypoints.has(goal)) {
+      return null;
+    }
+
+    if (bannedNodes.has(start) || bannedNodes.has(goal)) {
+      return null;
+    }
+
+    if (start === goal) {
+      return {
+        path: [start],
+        distanceMeters: 0,
+        waypoints: [this.waypoints.get(start)]
+      };
+    }
+
+    const distances = new Map();
+    const previous = new Map();
+    const unvisited = new Set(this.waypoints.keys());
+
+    for (const id of this.waypoints.keys()) {
+      distances.set(id, Infinity);
+    }
+
+    distances.set(start, 0);
+
+    while (unvisited.size > 0) {
+      let current = null;
+      let minDistance = Infinity;
+
+      for (const id of unvisited) {
+        if (distances.get(id) < minDistance) {
+          minDistance = distances.get(id);
+          current = id;
+        }
+      }
+
+      if (current === null || minDistance === Infinity) break;
+      if (current === goal) break;
+
+      unvisited.delete(current);
+
+      for (const neighbor of this.adjacency.get(current) || []) {
+        if (!unvisited.has(neighbor)) continue;
+        if (bannedNodes.has(neighbor)) continue;
+
+        // Treat a road as an undirected edge, matching findShortestPath().
+        const edgeKey = [current, neighbor].sort().join('|');
+        if (bannedEdges.has(edgeKey)) continue;
+
+        const alt = distances.get(current) + this.distance(current, neighbor);
+
+        if (alt < distances.get(neighbor)) {
+          distances.set(neighbor, alt);
+          previous.set(neighbor, current);
+        }
+      }
+    }
+
+    if (!previous.has(goal)) return null;
+
+    const path = [];
+    let current = goal;
+
+    while (current !== undefined) {
+      path.unshift(current);
+      current = previous.get(current);
+    }
+
+    const totalDistance = distances.get(goal);
+
+    return {
+      path,
+      distanceMeters: Math.round(totalDistance * 10) / 10,
+      waypoints: path.map(id => this.waypoints.get(id))
+    };
+  }
+
+  /**
+   * Find up to k distinct loopless paths between two waypoint IDs,
+   * ordered by distance.
+   */
+  findAlternativePaths(startId, goalId, k = 3) {
+    const start = WayfinderGraph.normalizeId(startId);
+    const goal = WayfinderGraph.normalizeId(goalId);
+
+    if (!Number.isInteger(k) || k < 1) return [];
+    if (!this.waypoints.has(start) || !this.waypoints.has(goal)) return [];
+
+    const firstPath = this.findShortestPath(start, goal);
+    if (!firstPath) return [];
+
+    const accepted = [firstPath];
+    const candidates = new Map();
+
+    const pathKey = path => path.join('->');
+
+    for (let iteration = 1; iteration < k; iteration++) {
+      const previousPath = accepted[iteration - 1].path;
+
+      for (let i = 0; i < previousPath.length - 1; i++) {
+        const rootPath = previousPath.slice(0, i + 1);
+        const spurNode = rootPath[rootPath.length - 1];
+
+        const bannedNodes = new Set(rootPath.slice(0, -1));
+        const bannedEdges = new Set();
+
+        // Remove the next edge of any accepted route sharing this root.
+        for (const route of accepted) {
+          const p = route.path;
+
+          if (p.length <= i) continue;
+
+          const sharesRoot = rootPath.every((id, index) => p[index] === id);
+          if (!sharesRoot || p.length <= i + 1) continue;
+
+          bannedEdges.add([p[i], p[i + 1]].sort().join('|'));
+        }
+
+        const spurPath = this.findPathWithExclusions(
+          spurNode,
+          goal,
+          bannedNodes,
+          bannedEdges
+        );
+
+        if (!spurPath) continue;
+
+        const combinedPath = [
+          ...rootPath.slice(0, -1),
+          ...spurPath.path
+        ];
+
+        const key = pathKey(combinedPath);
+
+        if (
+          accepted.some(route => pathKey(route.path) === key) ||
+          candidates.has(key)
+        ) {
+          continue;
+        }
+
+        let totalDistance = 0;
+
+        for (let j = 0; j < combinedPath.length - 1; j++) {
+          totalDistance += this.distance(
+            combinedPath[j],
+            combinedPath[j + 1]
+          );
+        }
+
+        candidates.set(key, {
+          path: combinedPath,
+          distanceMeters: Math.round(totalDistance * 10) / 10,
+          waypoints: combinedPath.map(id => this.waypoints.get(id))
+        });
+      }
+
+      if (candidates.size === 0) break;
+
+      const bestCandidate = [...candidates.entries()].sort(
+        (a, b) => a[1].distanceMeters - b[1].distanceMeters
+      )[0];
+
+      accepted.push(bestCandidate[1]);
+      candidates.delete(bestCandidate[0]);
+    }
+
+    return accepted;
+  }
+
+} 
