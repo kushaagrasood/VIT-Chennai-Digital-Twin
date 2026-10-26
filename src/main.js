@@ -6,6 +6,7 @@ import { UIController } from './ui.js';
 
 async function bootstrap() {
   const canvasContainer = document.getElementById('canvas-container');
+  const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
   // 1. Initialize Wayfinder Graph
   const graph = new WayfinderGraph();
@@ -30,98 +31,41 @@ async function bootstrap() {
       graph.loadBuildingEntrances(rawEntrances);
 
       
-      // TEST: Find alternative walking routes between two waypoints
-      console.log("Testing alternative route algorithm...");
-
-      if (typeof graph.findAlternativePaths === 'function') {
-        const routes = graph.findAlternativePaths('199', '33', 3);
-
-        console.log("Alternative routes:", routes);
-
-        console.table(
-          routes.map((route, index) => ({
-            route: index + 1,
-            distance: route.distanceMeters,
-            waypointCount: route.path.length,
-            path: route.path.join(' -> ')
-          }))
-        );
-
-        if (routes.length === 0) {
-          console.warn("No routes found between waypoints 199 and 33.");
+      // Diagnostic tests enabled only in debug mode (?debug=true)
+      if (isDebug) {
+        console.log('[DEBUG] Testing alternative route algorithm...');
+        if (typeof graph.findAlternativePaths === 'function') {
+          const routes = graph.findAlternativePaths('199', '33', 3);
+          console.table(
+            routes.map((route, index) => ({
+              route: index + 1,
+              distance: `${route.distanceMeters} m`,
+              waypointCount: route.path.length,
+              path: route.path.join(' -> ')
+            }))
+          );
         }
-      } else {
-        console.error(
-          "findAlternativePaths() is missing from graph.js"
-        );
-      }
 
-
-      // TEMPORARY: Verify campus gate IDs and road connectivity
-      const gates = [
-        { name: 'Main Gate - Entrance 1', id: '111' },
-        { name: 'Main Gate - Entrance 2', id: '188' },
-        { name: '2nd Gate', id: '33' }
-      ];
-
-      console.table(
-        gates.map(gate => ({
-          gate: gate.name,
-          waypointId: gate.id,
-          exists: graph.waypoints.has(gate.id),
-          neighborCount: (graph.adjacency.get(gate.id) || new Set()).size,
-          neighbors: [
-            ...(graph.adjacency.get(gate.id) || new Set())
-          ].join(', ')
-        }))
-      );
-
-      // Check that the building entrances are loaded correctly
-      
-      // Check that the building entrances are loaded correctly
-      console.log('Loaded buildings:', graph.buildings.size);
-      console.log(
-        'Gate definitions:',
-        graph.getCampusGates?.() ?? 'getCampusGates() not added'
-      );
-
-      // Gate waypoint IDs verified from buildingEntrances.json
-      const gateIds = ['111', '188', '33'];
-
-      // Calculate evacuation routes for every building
-      if (typeof graph.getCampusEvacuationRoutes !== 'function') {
-        console.error(
-          'Missing getCampusEvacuationRoutes() in graph.js. ' +
-          'Add the evacuation route methods inside the WayfinderGraph class.'
-        );
-      } else {
-        const campusRoutes = graph.getCampusEvacuationRoutes(gateIds);
-
-        console.log('Campus evacuation route report:');
+        const gates = [
+          { name: 'Main Gate - Entrance 1', id: '111' },
+          { name: 'Main Gate - Entrance 2', id: '188' },
+          { name: '2nd Gate', id: '33' }
+        ];
 
         console.table(
-          campusRoutes.map(building => ({
-            building: building.displayName,
-            buildingKey: building.buildingKey,
-            entrances: (building.entrances || []).join(', '),
-            reachable: Boolean(building.nearestExit),
-            nearestGate: building.nearestExit?.exitId ?? 'No route',
-            distance: building.nearestExit?.distanceMeters ?? 'N/A',
-            routesFound: (building.routes || []).length
+          gates.map(gate => ({
+            gate: gate.name,
+            waypointId: gate.id,
+            exists: graph.waypoints.has(gate.id),
+            neighborCount: (graph.adjacency.get(gate.id) || new Set()).size
           }))
         );
 
-
-        const unreachable = campusRoutes.filter(
-          building => !building.nearestExit
-        );
-
-        console.log('Total buildings:', campusRoutes.length);
-        console.log(
-          'Buildings with a route:',
-          campusRoutes.length - unreachable.length
-        );
-        console.log('Buildings without a route:', unreachable);
+        if (typeof graph.getCampusEvacuationRoutes === 'function') {
+          const campusRoutes = graph.getCampusEvacuationRoutes(['111', '188', '33']);
+          const reachableCount = campusRoutes.filter(b => b.nearestExit).length;
+          console.log(`[DEBUG] Campus evacuation reachability: ${reachableCount} / ${campusRoutes.length} buildings.`);
+        }
       }
 
       dataLoaded = true;
@@ -202,46 +146,17 @@ async function bootstrap() {
       window.__navView = navView;
 
       
-      // Temporary density data for every indexed building
-      const densities = new Map();
-
-      [...scene.buildingMeshes.keys()].forEach((key, index) => {
-        densities.set(key, 0.10 + (((index * 37 + 17) % 86) / 100));
-      });
-
-      // Use the existing simulated occupancy for the auditorium.
-      const state = twinEngine.getState();
-
-      if (densities.has('Building024')) {
-        densities.set(
-          'Building024',
-          Math.max(0, Math.min(1, state.occupancy / state.capacity))
-        );
-      }
-
-      scene.setBuildingCrowdDensities(densities);
-
-      // Keep permanent heatmap disabled.
-      scene.setHeatmapEnabled(false);
-
-      console.log(`Density data assigned to ${densities.size} buildings.`);
-
-      
-      // SIMULATED CROWD DENSITY FOR ALL INDEXED BUILDINGS
+      // Initialize baseline simulated crowd density across campus buildings
       const buildingDensities = new Map();
-
       const buildingKeys = [...scene.buildingMeshes.keys()];
 
       buildingKeys.forEach((key, index) => {
-        // Stable, varied demonstration values between 10% and 95%.
-        const density = 0.10 + (
-          ((index * 37 + 17) % 86) / 100
-        );
-
+        // Stable, varied demonstration values between 10% and 95%
+        const density = 0.10 + (((index * 37 + 17) % 86) / 100);
         buildingDensities.set(key, density);
       });
 
-      // Make the auditorium reflect the current simulated occupancy.
+      // Synchronize auditorium density with the live telemetry state
       const twinState = twinEngine.getState();
       const auditoriumDensity = Math.max(
         0,
@@ -253,22 +168,11 @@ async function bootstrap() {
       }
 
       scene.setBuildingCrowdDensities(buildingDensities);
-
-      // Hover-only coloring; do not enable the permanent heatmap.
       scene.setHeatmapEnabled(false);
 
-      console.log(
-        `Hover density enabled for ${buildingDensities.size} buildings.`
-      );
-
-
-      //scene.setHeatmapEnabled(true);
-
-      console.log("Heatmap enabled:", scene.heatmapEnabled);
-      console.log(
-        "Density test values:",
-        Object.fromEntries(scene.buildingCrowdDensities)
-      );
+      if (isDebug) {
+        console.log(`[DEBUG] Hover density initialized for ${buildingDensities.size} buildings.`);
+      }
 
 
       // Finish loading bar and select Auditorium WITHOUT moving the camera,

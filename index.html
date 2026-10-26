@@ -23,7 +23,7 @@
       </div>
       <div class="loading-footer">
         <span id="loading-percent" class="loading-percent">0%</span>
-        <span class="loading-sub">20.3 MB GLTF • 278 Navigation Waypoints</span>
+        <span class="loading-sub">20.3 MB GLTF • Spatial Campus Model</span>
       </div>
     </div>
   </div>
@@ -39,7 +39,7 @@
     </div>
 
     <div class="header-actions">
-      <button id="btn-show-diagnostics" class="header-btn" title="View Graph & Coordinate Validation">
+      <button id="btn-show-diagnostics" class="header-btn hidden" title="View Graph & Coordinate Validation">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
         <span>Coordinate Diagnostics</span>
       </button>
@@ -81,10 +81,10 @@
       <div id="location-detail-card" class="detail-card hidden">
         <div class="detail-card-header">
           <h3 id="loc-name">Mahatma Gandhi Auditorium</h3>
-          <span id="loc-key" class="mono-badge">Building024</span>
+          <span id="loc-key" class="mono-badge hidden">Building024</span>
         </div>
-        <p id="loc-entrance" class="detail-row">Entrance WP: 199</p>
-        <p id="loc-coords" class="detail-coords mono-text">Local Coords: [X: 70.3, Z: 328.5]</p>
+        <p id="loc-entrance" class="detail-row hidden">Entrance WP: 199</p>
+        <p id="loc-coords" class="detail-coords mono-text hidden">Local Coords: [X: 70.3, Z: 328.5]</p>
         <button id="loc-focus-btn" class="action-btn-sm">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
           Center Camera
@@ -110,7 +110,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           <span>MG Auditorium</span>
         </button>
-        <button id="btn-toggle-nav" class="hud-btn active" title="Toggle Wayfinder Road Graph">
+        <button id="btn-toggle-nav" class="hud-btn" title="Toggle Wayfinder Road Graph">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><path d="M8 8l8 8"/></svg>
           <span>Wayfinder Graph</span>
         </button>
@@ -126,7 +126,7 @@
             <span class="live-tag">VENUE TWIN</span>
             <h2>Mahatma Gandhi Auditorium</h2>
           </div>
-          <span class="venue-sub">Building024 • Entrance Waypoint 199</span>
+          <span class="venue-sub">Central Campus • Main Auditorium</span>
         </div>
 
         <div class="disclaimer-banner">
@@ -288,7 +288,7 @@
               <span class="evac-label">Walking Distance</span>
               <strong id="evac-dist" class="mono-text">122.6 m</strong>
             </div>
-            <div class="evac-stat">
+            <div id="evac-hops-stat" class="evac-stat hidden">
               <span class="evac-label">Waypoints</span>
               <strong id="evac-hops" class="mono-text">4 nodes</strong>
             </div>
@@ -302,7 +302,7 @@
             </div>
           </div>
 
-          <div class="evac-path-breakdown">
+          <div id="evac-path-breakdown" class="evac-path-breakdown hidden">
             <span class="evac-label">Waypoint Sequence:</span>
             <div id="evac-path-nodes" class="path-nodes-box mono-text">
               199 ➔ 198 ➔ 32 ➔ 33
@@ -310,7 +310,7 @@
           </div>
 
           <div class="evac-disclaimer">
-            <small>⚠️ <strong>Disclaimer:</strong> Algorithmic demonstration using campus road waypoints and theoretical egress rates. Not a validated or certified building safety evacuation plan.</small>
+            <small>⚠️ <strong>Simulation Disclaimer:</strong> Algorithmic demonstration using estimated pedestrian egress rates. Not certified life-safety emergency guidance.</small>
           </div>
         </div>
       </div>

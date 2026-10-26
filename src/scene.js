@@ -516,7 +516,7 @@ export class CampusScene {
     bar.appendChild(fill);
 
     const note = document.createElement('div');
-    note.textContent = 'Simulated data · Not live occupancy';
+    note.textContent = 'Simulated demonstration • Not live IoT sensor data';
     note.style.cssText =
       'font-size:10px;color:#94a3b8;margin-top:8px';
 

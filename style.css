@@ -361,6 +361,13 @@ body {
   color: var(--accent-yellow);
 }
 
+.category-tag {
+  color: var(--accent-cyan);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
 .no-results {
   text-align: center;
   color: var(--text-muted);

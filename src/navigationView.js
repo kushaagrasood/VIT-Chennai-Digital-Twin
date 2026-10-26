@@ -16,20 +16,28 @@ export class NavigationView {
     this.overlayGroup.name = 'NavigationOverlay';
     this.scene.add(this.overlayGroup);
 
+    // Dense graph network (waypoint spheres, road edges, entrance markers)
+    // Hidden by default for a clean campus view
+    this.graphGroup = new THREE.Group();
+    this.graphGroup.name = 'DenseGraphNetwork';
+    this.overlayGroup.add(this.graphGroup);
+
     this.waypointSpheres = null;
     this.roadEdges = null;
     this.entranceMarkersGroup = new THREE.Group();
-    this.overlayGroup.add(this.entranceMarkersGroup);
+    this.graphGroup.add(this.entranceMarkersGroup);
 
-    // Selected entrance marker
+    // Selected entrance beacon (visible when a building is selected)
     this.selectedMarkerGroup = new THREE.Group();
     this.overlayGroup.add(this.selectedMarkerGroup);
 
-    // Evacuation path visual
+    // Active route visual (drawn when route/evacuation is requested)
     this.evacuationGroup = new THREE.Group();
     this.overlayGroup.add(this.evacuationGroup);
 
-    this.isVisible = true;
+    this.isGraphVisible = false;
+    this.graphGroup.visible = false;
+    this.isVisible = false;
     this.elevationOffset = 1.2; // Elevation above ground so markers sit cleanly on roads
 
     this.buildGraphVisuals();
@@ -61,7 +69,7 @@ export class NavigationView {
       this.waypointSpheres.setMatrixAt(i, dummy.matrix);
     });
     this.waypointSpheres.instanceMatrix.needsUpdate = true;
-    this.overlayGroup.add(this.waypointSpheres);
+    this.graphGroup.add(this.waypointSpheres);
 
     // 2. Road Edges (LineSegments)
     const edgePositions = [];
@@ -97,7 +105,7 @@ export class NavigationView {
     });
 
     this.roadEdges = new THREE.LineSegments(lineGeo, lineMat);
-    this.overlayGroup.add(this.roadEdges);
+    this.graphGroup.add(this.roadEdges);
   }
 
   /**
@@ -177,7 +185,7 @@ export class NavigationView {
     }
 
     this.selectedMarkerGroup.position.set(wp.x, wp.y + this.elevationOffset, wp.z);
-    this.selectedMarkerGroup.visible = this.isVisible;
+    this.selectedMarkerGroup.visible = true;
     return wp;
   }
 
@@ -264,30 +272,40 @@ export class NavigationView {
 
   clearEvacuationRoute() {
     this.evacuationGroup.clear();
+    this.evacuationGroup.visible = false;
   }
 
   /**
-   * Toggle visibility of navigation overlay
+   * Toggle visibility of dense navigation network (spheres and road lines)
    */
+  setGraphVisible(visible) {
+    this.isGraphVisible = Boolean(visible);
+    this.graphGroup.visible = this.isGraphVisible;
+  }
+
+  toggleGraph() {
+    this.setGraphVisible(!this.isGraphVisible);
+    return this.isGraphVisible;
+  }
+
+  // Compatibility aliases
   setVisible(visible) {
-    this.isVisible = visible;
-    this.overlayGroup.visible = visible;
+    this.setGraphVisible(visible);
   }
 
   toggle() {
-    this.setVisible(!this.isVisible);
-    return this.isVisible;
+    return this.toggleGraph();
   }
 
   /**
    * Called in animation loop to pulse rings / markers
    */
   update(time) {
-    if (this.selectedRing) {
+    if (this.selectedRing && this.selectedMarkerGroup && this.selectedMarkerGroup.visible) {
       const scale = 1 + 0.25 * Math.sin(time * 3);
       this.selectedRing.scale.set(scale, scale, scale);
     }
-    if (this.entranceMarkersGroup) {
+    if (this.entranceMarkersGroup && this.isGraphVisible) {
       this.entranceMarkersGroup.children.forEach((child, i) => {
         child.rotation.y = time * 0.8 + i * 0.1;
       });

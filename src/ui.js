@@ -11,6 +11,8 @@ export class UIController {
     this.navView = navView;
     this.twin = twinEngine;
 
+    this.isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
+
     this.selectedBuildingKey = 'Building024';
     this.currentCategory = 'all';
     this.searchQuery = '';
@@ -67,8 +69,10 @@ export class UIController {
       evacResultCard: document.getElementById('evac-result-card'),
       evacDist: document.getElementById('evac-dist'),
       evacHops: document.getElementById('evac-hops'),
+      evacHopsStat: document.getElementById('evac-hops-stat'),
       evacWalkTime: document.getElementById('evac-walk-time'),
       evacTotalTime: document.getElementById('evac-total-time'),
+      evacPathBreakdown: document.getElementById('evac-path-breakdown'),
       evacPathNodes: document.getElementById('evac-path-nodes'),
 
       // Camera HUD
@@ -220,6 +224,12 @@ export class UIController {
 
     // 7. Modals
     if (this.dom.btnShowDiagnostics) {
+      if (this.isDebug) {
+        this.dom.btnShowDiagnostics.classList.remove('hidden');
+      } else {
+        this.dom.btnShowDiagnostics.classList.add('hidden');
+      }
+
       this.dom.btnShowDiagnostics.addEventListener('click', () => {
         this.populateDiagnosticsData();
         this.dom.diagnosticsModal.classList.remove('hidden');
@@ -290,8 +300,8 @@ export class UIController {
           ${isAuditorium ? '<span class="twin-badge">LIVE TWIN</span>' : ''}
         </div>
         <div class="building-meta">
-          <span class="building-key">${b.key}</span>
-          <span class="entrance-tag">WP ${b.primaryEntranceId || 'None'}</span>
+          <span class="category-tag">${cat.toUpperCase()}</span>
+          ${this.isDebug ? `<span class="building-key">${b.key}</span><span class="entrance-tag">WP ${b.primaryEntranceId || 'None'}</span>` : ''}
         </div>
       `;
 
@@ -332,14 +342,29 @@ export class UIController {
     if (this.dom.locationCard) {
       this.dom.locationCard.classList.remove('hidden');
       this.dom.locName.textContent = b.displayName;
-      this.dom.locKey.textContent = `ID: ${b.key}`;
-      this.dom.locEntrance.textContent = `Entrance WP: ${b.primaryEntranceId || 'None'}`;
 
-      const wp = this.graph.waypoints.get(b.primaryEntranceId);
-      if (wp) {
-        this.dom.locCoords.textContent = `Local Coords: [X: ${wp.x}, Z: ${wp.z}] | Lat: ${wp.lat || 'N/A'}, Lon: ${wp.lon || 'N/A'}`;
+      if (this.isDebug) {
+        if (this.dom.locKey) {
+          this.dom.locKey.classList.remove('hidden');
+          this.dom.locKey.textContent = `ID: ${b.key}`;
+        }
+        if (this.dom.locEntrance) {
+          this.dom.locEntrance.classList.remove('hidden');
+          this.dom.locEntrance.textContent = `Entrance WP: ${b.primaryEntranceId || 'None'}`;
+        }
+        if (this.dom.locCoords) {
+          this.dom.locCoords.classList.remove('hidden');
+          const wp = this.graph.waypoints.get(b.primaryEntranceId);
+          if (wp) {
+            this.dom.locCoords.textContent = `Local Coords: [X: ${wp.x}, Z: ${wp.z}] | Lat: ${wp.lat || 'N/A'}, Lon: ${wp.lon || 'N/A'}`;
+          } else {
+            this.dom.locCoords.textContent = 'Local Coords: (No entrance linked)';
+          }
+        }
       } else {
-        this.dom.locCoords.textContent = 'Local Coords: (No entrance linked)';
+        this.dom.locKey?.classList.add('hidden');
+        this.dom.locEntrance?.classList.add('hidden');
+        this.dom.locCoords?.classList.add('hidden');
       }
     }
   }
@@ -370,8 +395,9 @@ export class UIController {
       buildings.forEach(building => {
         const option = document.createElement('option');
         option.value = building.key;
-        option.textContent =
-          `${building.displayName} (${building.primaryEntranceId || 'Entrance'})`;
+        option.textContent = this.isDebug
+          ? `${building.displayName} (WP ${building.primaryEntranceId || 'N/A'})`
+          : building.displayName;
 
         select.appendChild(option);
       });
@@ -463,7 +489,7 @@ export class UIController {
     }
 
     if (fromKey === toKey) {
-      this.setNavigationStatus('Choose two different locations.');
+      this.setNavigationStatus('Origin and destination are the same location. Please choose two different locations.');
       return;
     }
 
@@ -541,21 +567,23 @@ export class UIController {
       heading.className = 'nav-route-card-header';
 
       const title = document.createElement('strong');
-      title.textContent = `Route ${index + 1}`;
+      title.textContent = index === 0 ? 'Route 1 (Shortest)' : `Route ${index + 1}`;
 
       const distance = document.createElement('span');
       distance.className = 'mono-text';
-      distance.textContent = `${route.distanceMeters} graph units`;
+      distance.textContent = `${route.distanceMeters} m`;
 
       heading.append(title, distance);
 
       const summary = document.createElement('p');
-      summary.textContent =
-        `${fromBuilding.displayName} → ${toBuilding.displayName}`;
+      summary.innerHTML = `<strong>${fromBuilding.displayName}</strong> → <strong>${toBuilding.displayName}</strong>`;
 
-      const nodes = document.createElement('p');
-      nodes.textContent =
-        `${route.path.length} waypoints: ${route.path.join(' → ')}`;
+      const estSec = Math.round(route.distanceMeters / 1.2);
+      const estTimeStr = `${Math.floor(estSec / 60)}m ${estSec % 60}s`;
+
+      const details = document.createElement('p');
+      details.className = 'route-details';
+      details.innerHTML = `Est. walking time: <strong style="color: #38bdf8;">${estTimeStr}</strong>`;
 
       const button = document.createElement('button');
       button.type = 'button';
@@ -566,7 +594,17 @@ export class UIController {
         this.displayNavigationRoute(index);
       });
 
-      card.append(heading, summary, nodes, button);
+      card.append(heading, summary, details);
+
+      if (this.isDebug) {
+        const nodes = document.createElement('p');
+        nodes.style.fontSize = '0.75rem';
+        nodes.style.color = '#94a3b8';
+        nodes.textContent = `Debug: ${route.path.length} waypoints (${route.path.join(' → ')})`;
+        card.appendChild(nodes);
+      }
+
+      card.appendChild(button);
       container.appendChild(card);
     });
   }
@@ -585,11 +623,18 @@ export class UIController {
       card.classList.toggle('selected', cardIndex === index);
     });
 
+    const estSec = Math.round(route.distanceMeters / 1.2);
+    const estTimeStr = `${Math.floor(estSec / 60)}m ${estSec % 60}s`;
+
     this.setNavigationStatus(
-      `Displaying Route ${index + 1}: ${route.path.length} waypoints, ${route.distanceMeters} graph units.`
+      this.isDebug
+        ? `Displaying Route ${index + 1}: ${route.path.length} waypoints, ${route.distanceMeters} m (${estTimeStr}).`
+        : `Displaying Route ${index + 1}: ${route.distanceMeters} m (approx. ${estTimeStr} walking).`
     );
 
-    console.log('Navigation route displayed:', route);
+    if (this.isDebug) {
+      console.log('Navigation route displayed:', route);
+    }
   }
 
   clearNavigationRoutes() {
@@ -624,9 +669,18 @@ export class UIController {
     this.dom.evacExitSelect.innerHTML = '';
 
     const exits = [
-      { id: '111', label: 'Main Gate — WP 111' },
-      { id: '188', label: 'Main Gate — WP 188' },
-      { id: '33', label: '2nd Gate — WP 33' }
+      {
+        id: '111',
+        label: this.isDebug ? 'Main Gate — Entrance 1 (WP 111)' : 'Main Gate — Entrance 1'
+      },
+      {
+        id: '188',
+        label: this.isDebug ? 'Main Gate — Entrance 2 (WP 188)' : 'Main Gate — Entrance 2'
+      },
+      {
+        id: '33',
+        label: this.isDebug ? '2nd Gate (WP 33)' : '2nd Gate'
+      }
     ];
 
     exits.forEach((exit, index) => {
@@ -712,12 +766,14 @@ export class UIController {
       this.dom.evacResultCard.classList.remove('hidden');
 
       if (this.dom.evacDist) {
-        this.dom.evacDist.textContent = `${route.distanceMeters} meters`;
+        this.dom.evacDist.textContent = `${route.distanceMeters} m`;
       }
 
       if (this.dom.evacHops) {
-        this.dom.evacHops.textContent =
-          `${route.path.length} waypoints`;
+        this.dom.evacHops.textContent = `${route.path.length} waypoints`;
+      }
+      if (this.dom.evacHopsStat) {
+        this.dom.evacHopsStat.classList.toggle('hidden', !this.isDebug);
       }
 
       if (this.dom.evacWalkTime) {
@@ -730,17 +786,22 @@ export class UIController {
         this.dom.evacTotalTime.textContent = metrics.formattedTime;
       }
 
+      if (this.dom.evacPathBreakdown) {
+        this.dom.evacPathBreakdown.classList.toggle('hidden', !this.isDebug);
+      }
       if (this.dom.evacPathNodes) {
         this.dom.evacPathNodes.textContent = route.path.join(' ➔ ');
       }
     }
 
-    console.log('Evacuation route displayed:', {
-      building: route.buildingKey,
-      entrance: route.entranceId,
-      exit: route.exitId,
-      distanceMeters: route.distanceMeters
-    });
+    if (this.isDebug) {
+      console.log('Evacuation route displayed:', {
+        building: route.buildingKey,
+        entrance: route.entranceId,
+        exit: route.exitId,
+        distanceMeters: route.distanceMeters
+      });
+    }
   }
 
 
