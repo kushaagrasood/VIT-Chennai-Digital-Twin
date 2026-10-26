@@ -14,16 +14,6 @@ This project explores how a **cloud-connected Digital Twin** can represent campu
 
 The initial demonstration focuses on VIT Chennai's campus model and Mahatma Gandhi Auditorium as an example of building-level occupancy monitoring and evacuation-route visualization.
 
-## Objectives
-
-- Develop an interactive 3D representation of the campus.
-- Integrate campus building and navigation data where permitted.
-- Represent building entrances and navigation connections.
-- Simulate IoT occupancy readings for selected campus locations.
-- Visualize occupancy levels, utilization, and alerts.
-- Demonstrate graph-based route analysis and evacuation scenarios.
-- Explore AWS services for data ingestion, storage, processing, and visualization.
-
 ## Key Features
 
 ### Interactive 3D Campus
@@ -195,25 +185,6 @@ The intended organization is:
 
 The actual structure should follow the implemented codebase.
 
-## Development Roadmap
-
-- [ ] Inspect and validate campus model and navigation data.
-- [ ] Implement the interactive 3D campus viewer.
-- [ ] Add searchable campus locations.
-- [ ] Validate navigation graph connectivity and coordinate alignment.
-- [ ] Implement simulated auditorium occupancy monitoring.
-- [ ] Add occupancy history and status indicators.
-- [ ] Implement graph-based route visualization.
-- [ ] Demonstrate evacuation scenarios.
-- [ ] Integrate AWS storage, APIs, and IoT ingestion.
-- [ ] Add deployment instructions, tests, and monitoring.
-- [ ] Document asset attribution and licensing.
-
-## Persistent Development Notes
-
-`SESSION_NOTES.md` maintains the project's development context across Codex sessions.
-
-It records the current implementation state, decisions, files changed, tests performed, known issues, and next steps. Each development task should append a dated history entry and update the current state without deleting earlier history.
 
 ## Limitations
 
@@ -232,7 +203,3 @@ Do not commit AWS credentials, API keys, cookies, or other secrets to the reposi
 ## Academic Context
 
 Developed as a Cloud Architecture Design project exploring digital twins, cloud infrastructure, spatial data, IoT simulation, and intelligent campus operations.
-
-## License
-
-A license has not yet been specified. Add an appropriate license after confirming the permissions applicable to the source campus assets and project code.
