@@ -3,140 +3,459 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VIT Chennai Campus — AI Digital Twin</title>
+  <title>VIT Chennai Campus — AI Digital Twin & Spatial Wayfinder</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <!-- Loading Screen -->
   <div id="loading-overlay" class="loading-overlay">
     <div class="loading-content">
       <div class="loading-logo">
+        <div class="loading-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
         <span class="loading-badge">VIT CHENNAI</span>
-        <h1>AI Digital Twin</h1>
+        <h1>AI SPATIAL DIGITAL TWIN</h1>
       </div>
-      <p id="loading-text" class="loading-text">Initializing 3D Campus Model & Wayfinder Navigation...</p>
+      <p id="loading-text" class="loading-text">Initializing 3D Campus Mesh & Wayfinder Topology...</p>
       <div class="loading-bar-track">
         <div id="loading-bar" class="loading-bar-fill"></div>
       </div>
       <div class="loading-footer">
         <span id="loading-percent" class="loading-percent">0%</span>
-        <span class="loading-sub">20.3 MB GLTF • Spatial Campus Model</span>
+        <span class="loading-sub">20.3 MB GLTF 2.0 • 1:1 Metric Coordinate Frame</span>
       </div>
     </div>
   </div>
 
-  <!-- App Header -->
+  <!-- Primary Application Header -->
   <header class="app-header">
     <div class="brand-group">
-      <div class="status-dot pulsing"></div>
+      <div class="brand-icon-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
       <div class="brand-titles">
-        <h1>VIT Chennai AI Digital Twin</h1>
-        <span class="sub-title">Spatial Campus Twin & Wayfinder Navigation Graph</span>
+        <span class="brand-org">VIT CHENNAI</span>
+        <h1 class="brand-name">SPATIAL DIGITAL TWIN</h1>
       </div>
     </div>
 
-    <div class="header-actions">
-      <button id="btn-show-diagnostics" class="header-btn hidden" title="View Graph & Coordinate Validation">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
-        <span>Coordinate Diagnostics</span>
+    <!-- Center Navigation Mode Tabs (Stitch Style) -->
+    <nav class="view-mode-nav">
+      <button class="nav-tab active" data-view="explorer" id="tab-explorer" title="Explore 3D Campus Directory">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24M14.83 9.17l4.24-4.24M14.83 14.83l4.24 4.24M9.17 14.83l-4.24 4.24"/></svg>
+        <span>Campus Explorer</span>
       </button>
-      <button id="btn-show-aws" class="header-btn" title="View AWS Cloud Deployment Blueprint">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-        <span>AWS Cloud Architecture</span>
+      <button class="nav-tab" data-view="routes" id="tab-routes" title="Pedestrian Point-to-Point Wayfinder Routing">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+        <span>Wayfinder Routes</span>
+      </button>
+      <button class="nav-tab" data-view="auditorium" id="tab-auditorium" title="Mahatma Gandhi Auditorium Dedicated Twin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 2l10 8H2l10-8z"/></svg>
+        <span>MG Auditorium Twin</span>
+      </button>
+      <button class="nav-tab" data-view="evacuation" id="tab-evacuation" title="Emergency Evacuation Egress Simulation">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Evacuation Egress</span>
+      </button>
+    </nav>
+
+    <!-- Header Right Actions & Telemetry Status -->
+    <div class="header-actions">
+      <div class="system-status-chip" title="Simulation Engine Status">
+        <span class="status-pulse-dot"></span>
+        <span class="status-label">SIMULATION LIVE</span>
+        <span class="fps-counter" id="fps-counter">60 FPS</span>
+      </div>
+
+      <button id="btn-show-diagnostics" class="header-tool-btn hidden" title="Coordinate Alignment & Topological Diagnostics (Ctrl+Shift+D)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+        <span>Diagnostics</span>
+      </button>
+
+      <button id="btn-show-aws" class="header-tool-btn" title="View AWS Cloud Deployment Architecture">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        <span>Architecture Docs</span>
       </button>
     </div>
   </header>
 
-  <!-- Main Workspace -->
+  <!-- Technical Context Ribbon (Sub-header) -->
+  <div class="tech-sub-bar">
+    <div class="sub-bar-item">
+      <span class="sub-bar-label">CAMPUS INSPECTOR</span>
+      <span class="sub-bar-val">12.8406° N, 80.1534° E</span>
+    </div>
+    <div class="sub-bar-divider"></div>
+    <div class="sub-bar-item">
+      <span class="sub-bar-label">GLB GEOMETRY</span>
+      <span class="sub-bar-val" id="sub-bar-geom">MOUNTED (20.3 MB)</span>
+    </div>
+    <div class="sub-bar-divider"></div>
+    <div class="sub-bar-item">
+      <span class="sub-bar-label">FRAME</span>
+      <span class="sub-bar-val">EPSG:3857 • 1:1 METRIC</span>
+    </div>
+    <div class="sub-bar-divider"></div>
+    <div class="sub-bar-item">
+      <span class="sub-bar-label">ZONE</span>
+      <span class="sub-bar-val">VANDALUR-KELAMBAKKAM RD</span>
+    </div>
+    <div class="sub-bar-divider"></div>
+    <div class="sub-bar-item">
+      <span class="sub-bar-label">ACTIVE TWIN</span>
+      <span class="sub-bar-val text-cyan" id="sub-bar-active-venue">MG AUDITORIUM (BLDG 024)</span>
+    </div>
+    <div class="sub-bar-item right-pinned">
+      <span class="sub-bar-tag">LOD 3.5</span>
+      <span class="sub-bar-tag badge-live">LIVE DIGITAL TWIN</span>
+    </div>
+  </div>
+
+  <!-- Main Three-Column Workspace -->
   <main class="main-workspace">
-    <!-- Left Sidebar: Location Search & Navigation -->
-    <aside class="sidebar-panel left-sidebar">
-      <div class="panel-header">
-        <h2>Campus Directory</h2>
-        <span id="building-count" class="badge">36 locations</span>
-      </div>
-
-      <div class="search-box">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-        <input type="text" id="search-input" placeholder="Search buildings, hostels, gates..." autocomplete="off" />
-      </div>
-
-      <div class="category-filters">
-        <button class="cat-pill active" data-cat="all">All</button>
-        <button class="cat-pill" data-cat="academic">Academic</button>
-        <button class="cat-pill" data-cat="hostel">Hostels</button>
-        <button class="cat-pill" data-cat="sports">Sports</button>
-        <button class="cat-pill" data-cat="amenities">Amenities</button>
-        <button class="cat-pill" data-cat="gate">Gates</button>
-      </div>
-
-      <div id="building-list" class="building-list-container">
-        <!-- Injected via JavaScript -->
-      </div>
-
-      <!-- Selected Location Detail Card -->
-      <div id="location-detail-card" class="detail-card hidden">
-        <div class="detail-card-header">
-          <h3 id="loc-name">Mahatma Gandhi Auditorium</h3>
-          <span id="loc-key" class="mono-badge hidden">Building024</span>
+    <!-- LEFT SIDEBAR: Campus Directory OR Auditorium Structure Inspector -->
+    <aside class="sidebar-panel left-sidebar" id="left-sidebar-panel">
+      <!-- Mode 1: Campus Directory (Active in Explorer / Routes / Evacuation) -->
+      <div id="campus-directory-container" class="panel-inner-container">
+        <div class="panel-header">
+          <div class="panel-title-row">
+            <h2>Campus Directory</h2>
+            <span id="building-count" class="badge">36 locations</span>
+          </div>
+          <span class="panel-sub">VIT Chennai Infrastructure Index</span>
         </div>
-        <p id="loc-entrance" class="detail-row hidden">Entrance WP: 199</p>
-        <p id="loc-coords" class="detail-coords mono-text hidden">Local Coords: [X: 70.3, Z: 328.5]</p>
-        <div class="card-btn-row">
-          <button id="loc-focus-btn" class="action-btn-sm" title="Center camera on building">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            <span>Center</span>
-          </button>
-          <button id="loc-directions-btn" class="action-btn-sm action-btn-accent" title="Set as navigation destination">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-            <span>Directions</span>
-          </button>
+
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="search-input" placeholder="Search academic blocks, hostels, gates..." autocomplete="off" />
+        </div>
+
+        <div class="category-filters">
+          <button class="cat-pill active" data-cat="all">All</button>
+          <button class="cat-pill" data-cat="academic">Academic</button>
+          <button class="cat-pill" data-cat="hostel">Hostels</button>
+          <button class="cat-pill" data-cat="sports">Sports</button>
+          <button class="cat-pill" data-cat="amenities">Amenities</button>
+          <button class="cat-pill" data-cat="gate">Gates</button>
+        </div>
+
+        <div id="building-list" class="building-list-container">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Mode 2: Auditorium Spatial Structure Inspector (Active in MG Auditorium Twin Mode) -->
+      <div id="auditorium-inspector-container" class="panel-inner-container hidden">
+        <div class="panel-header">
+          <div class="panel-title-row">
+            <h2>Spatial Structure</h2>
+            <span class="badge text-cyan">BLDG 024</span>
+          </div>
+          <span class="panel-sub">Mahatma Gandhi Auditorium Precinct</span>
+        </div>
+
+        <div class="inspector-card">
+          <div class="inspector-title-row">
+            <h3>Mahatma Gandhi Auditorium</h3>
+            <span class="mono-badge">FAC-024</span>
+          </div>
+          <p class="inspector-desc">Central academic assembly complex with dual-tier structural seating and mechanical ventilation cores.</p>
+
+          <div class="spec-grid">
+            <div class="spec-cell">
+              <span class="spec-label">DESIGN CAPACITY</span>
+              <strong class="spec-val">2,400 Seats</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-label">FOOTPRINT</span>
+              <strong class="spec-val">3,850 m²</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-label">VERTICAL TIERING</span>
+              <strong class="spec-val">2 Levels (Stalls + Balcony)</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-label">EGRESS NODES</span>
+              <strong class="spec-val text-cyan">6 Portals (External)</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-label">STRUCTURE</span>
+              <strong class="spec-val">PT Reinforced Concrete</strong>
+            </div>
+            <div class="spec-cell">
+              <span class="spec-label">COORDINATE MATCH</span>
+              <strong class="spec-val text-green">1:1 Native Align</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulated Subsystems Array -->
+        <div class="subsystem-card">
+          <div class="subsystem-header">
+            <h4>Facility Subsystems</h4>
+            <span class="status-chip-sub text-green">5/5 NOMINAL</span>
+          </div>
+          <div class="subsystem-list">
+            <div class="subsystem-item">
+              <div class="subsystem-meta">
+                <span class="subsystem-name">Turnstile Sensor Array</span>
+                <span class="subsystem-sub">6 Entrance/Exit Channels</span>
+              </div>
+              <span class="subsystem-badge text-green">Online (100%)</span>
+            </div>
+            <div class="subsystem-item">
+              <div class="subsystem-meta">
+                <span class="subsystem-name">Acoustic SPL Sensor</span>
+                <span class="subsystem-sub">Main Hall & Balcony</span>
+              </div>
+              <span class="subsystem-badge text-cyan">54.2 dBA avg</span>
+            </div>
+            <div class="subsystem-item">
+              <div class="subsystem-meta">
+                <span class="subsystem-name">HVAC Air Handler #3</span>
+                <span class="subsystem-sub">Air Exchange & Static Flow</span>
+              </div>
+              <span class="subsystem-badge text-green">650 ppm CO₂</span>
+            </div>
+            <div class="subsystem-item">
+              <div class="subsystem-meta">
+                <span class="subsystem-name">Emergency Exit Monitored Doors</span>
+                <span class="subsystem-sub">Magnetic Latches</span>
+              </div>
+              <span class="subsystem-badge text-green">Closed / Ready</span>
+            </div>
+            <div class="subsystem-item">
+              <div class="subsystem-meta">
+                <span class="subsystem-name">Campus Microclimate</span>
+                <span class="subsystem-sub">Ambient Wet Bulb</span>
+              </div>
+              <span class="subsystem-badge text-cyan">28.4°C • 14 km/h SE</span>
+            </div>
+          </div>
+          <div class="disclaimer-mini">
+            <small>⚠️ Subsystem values are simulated telemetry for CAD demonstration.</small>
+          </div>
         </div>
       </div>
     </aside>
 
-    <!-- Center 3D Campus Viewport -->
+    <!-- CENTER 3D CAMPUS VIEWPORT -->
     <section class="viewport-section">
       <div id="canvas-container" class="canvas-container"></div>
 
-      <!-- Floating HUD Controls -->
+      <!-- Floating Map HUD Toolbar (MG Auditorium Button Removed!) -->
       <div class="floating-hud">
-        <button id="btn-reset-cam" class="hud-btn" title="Reset Campus View">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          <span>Reset Camera</span>
+        <button id="btn-reset-cam" class="hud-btn" title="Reset Camera to Campus Overview">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span>Reset View</span>
         </button>
         <button id="btn-top-down" class="hud-btn" title="Orthographic Plan View">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-          <span>Top-Down View</span>
-        </button>
-        <button id="btn-focus-auditorium" class="hud-btn highlight-hud" title="Focus Mahatma Gandhi Auditorium">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <span>MG Auditorium</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <span>2D Ortho / Top-Down</span>
         </button>
         <button id="btn-toggle-heatmap" class="hud-btn" title="Toggle Campus Crowd Density Heatmap">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
           <span>Crowd Heatmap</span>
         </button>
-        <button id="btn-toggle-nav" class="hud-btn" title="Toggle Wayfinder Road Graph">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><path d="M8 8l8 8"/></svg>
+        <button id="btn-toggle-nav" class="hud-btn" title="Toggle Wayfinder Road Graph Pins & Edges">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><path d="M8 8l8 8"/></svg>
           <span>Wayfinder Graph</span>
         </button>
       </div>
+
+      <!-- Heatmap Legend (Appears when heatmap is active) -->
+      <div id="heatmap-legend" class="heatmap-legend hidden">
+        <span class="legend-title">Simulated Crowd Density</span>
+        <div class="legend-bars">
+          <div class="legend-step"><span class="legend-color" style="background:#22aaff;"></span><span>&lt;25% Low</span></div>
+          <div class="legend-step"><span class="legend-color" style="background:#22cc88;"></span><span>25-50% Mod</span></div>
+          <div class="legend-step"><span class="legend-color" style="background:#ffcc33;"></span><span>50-75% High</span></div>
+          <div class="legend-step"><span class="legend-color" style="background:#ff4455;"></span><span>&gt;75% Critical</span></div>
+        </div>
+      </div>
+
+      <!-- Contextual Selected Location Floating Card (Screen 1 Inspired) -->
+      <div id="viewport-selection-card" class="viewport-selection-card hidden">
+        <div class="selection-card-header">
+          <span class="selection-tag">SELECTED STRUCTURE</span>
+          <button id="btn-close-selection" class="btn-card-close" title="Dismiss selection">×</button>
+        </div>
+        <div class="selection-body">
+          <h3 id="vp-selected-name">Mahatma Gandhi Auditorium</h3>
+          <div class="selection-meta">
+            <span id="vp-selected-cat" class="cat-badge">AMENITIES</span>
+            <span id="vp-selected-id" class="code-badge">Building024</span>
+          </div>
+        </div>
+        <div class="selection-actions">
+          <button id="vp-focus-btn" class="btn-vp-action">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Focus Camera</span>
+          </button>
+          <button id="vp-directions-btn" class="btn-vp-action btn-vp-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            <span>Get Directions</span>
+          </button>
+        </div>
+      </div>
     </section>
 
-    <!-- Right Sidebar: Digital Twin Telemetry & Evacuation Engine -->
-    <aside class="sidebar-panel right-sidebar">
-      <!-- Section 1: Twin Telemetry -->
-      <div class="twin-section">
+    <!-- RIGHT SIDEBAR: Contextual Dynamic Workspace -->
+    <aside class="sidebar-panel right-sidebar" id="right-sidebar-panel">
+
+      <!-- ============================================================= -->
+      <!-- VIEW 1: Campus Explorer Context (Default)                     -->
+      <!-- ============================================================= -->
+      <div id="view-explorer-context" class="context-view">
+        <div class="context-header">
+          <div class="context-tag-row">
+            <span class="context-tag">EXPLORER CONTEXT</span>
+            <span id="explorer-context-badge" class="badge">ACTIVE SELECTION</span>
+          </div>
+          <h3>Selected Location Overview</h3>
+        </div>
+
+        <!-- Selected Location Detail Card -->
+        <div id="location-detail-card" class="detail-card">
+          <div class="detail-card-header">
+            <h3 id="loc-name">Mahatma Gandhi Auditorium</h3>
+            <span id="loc-key" class="mono-badge hidden">Building024</span>
+          </div>
+          <p id="loc-entrance" class="detail-row hidden">Entrance WP: 199</p>
+          <p id="loc-coords" class="detail-coords mono-text hidden">Local Coords: [X: 70.3, Z: 328.5]</p>
+          
+          <div class="card-btn-row">
+            <button id="loc-focus-btn" class="action-btn-sm" title="Center camera on building">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              <span>Center View</span>
+            </button>
+            <button id="loc-directions-btn" class="action-btn-sm action-btn-accent" title="Set as navigation destination">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              <span>Directions</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- MG Auditorium Telemetry Preview (Visible when MG Auditorium is selected) -->
+        <div id="explorer-auditorium-preview" class="auditorium-preview-card">
+          <div class="preview-header">
+            <span class="badge text-cyan">LIVE VENUE TWIN</span>
+            <h4>Mahatma Gandhi Auditorium</h4>
+          </div>
+          <div class="preview-gauge-row">
+            <div class="preview-metric">
+              <span class="preview-label">SIMULATED OCCUPANCY</span>
+              <div class="preview-val-row">
+                <span id="preview-occ-val" class="preview-val mono-text">1,480</span>
+                <span class="preview-sub">/ 2,400 seats</span>
+              </div>
+            </div>
+            <div id="preview-status-badge" class="status-badge status-mod">MODERATE</div>
+          </div>
+          <button id="btn-launch-auditorium-twin" class="action-btn-primary full-width" style="margin-top: 12px;">
+            <span>Open Dedicated Auditorium Twin →</span>
+          </button>
+        </div>
+
+        <!-- Spatial Microclimate & Sensor Telemetry Card -->
+        <div class="spatial-conditions-card">
+          <h4>Spatial Conditions & Telemetry</h4>
+          <div class="conditions-grid">
+            <div class="condition-item">
+              <span class="condition-label">Ambient Temp</span>
+              <span class="condition-val">28.4°C</span>
+            </div>
+            <div class="condition-item">
+              <span class="condition-label">Relative Humidity</span>
+              <span class="condition-val">45%</span>
+            </div>
+            <div class="condition-item">
+              <span class="condition-label">Solar Irradiation</span>
+              <span class="condition-val">740 W/m²</span>
+            </div>
+            <div class="condition-item">
+              <span class="condition-label">Ground Datum</span>
+              <span class="condition-val text-green">Y = 0.0 m</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transit Quick Route Card -->
+        <div class="transit-quick-card">
+          <div class="transit-header">
+            <h4>Wayfinder Pedestrian Transit</h4>
+            <span class="status-chip-sub text-cyan">278 NODES</span>
+          </div>
+          <p class="transit-desc">Topological routing over 606 campus road segments. Calculate walking directions from any campus building.</p>
+          <button id="btn-open-route-planner" class="action-btn-secondary full-width" style="margin-top: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>
+            <span>Open Wayfinder Route Planner</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- VIEW 2: Wayfinder Route Planner View                          -->
+      <!-- ============================================================= -->
+      <div id="view-routes-context" class="context-view hidden">
+        <div class="context-header">
+          <div class="context-tag-row">
+            <span class="context-tag">SPATIAL TRANSIT</span>
+            <span class="badge text-cyan">WAYFINDER GRAPH</span>
+          </div>
+          <h3>Campus Route Planner</h3>
+          <span class="panel-sub">Algorithmic pedestrian navigation with alternative routes</span>
+        </div>
+
+        <div class="route-planner-controls">
+          <div class="route-label-row">
+            <label for="nav-from">Starting location</label>
+            <button id="btn-swap-route" class="btn-swap-route" type="button" title="Swap Starting Location and Destination">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5M7 9l5-5 5 5M12 20V4"/></svg>
+              <span>Swap</span>
+            </button>
+          </div>
+          <select id="nav-from" class="select-input">
+            <option value="">Choose starting location</option>
+          </select>
+
+          <label for="nav-to">Destination</label>
+          <select id="nav-to" class="select-input">
+            <option value="">Choose destination</option>
+          </select>
+
+          <div class="evac-btn-row">
+            <button id="nav-find-btn" class="action-btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Find Routes</span>
+            </button>
+            <button id="nav-clear-btn" class="action-btn-secondary">
+              Clear
+            </button>
+          </div>
+        </div>
+
+        <div id="nav-route-status" class="route-status" aria-live="polite">
+          Choose two locations to plan your journey.
+        </div>
+
+        <div id="nav-route-results" class="nav-route-results"></div>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- VIEW 3: Mahatma Gandhi Auditorium Dedicated Twin Dashboard    -->
+      <!-- ============================================================= -->
+      <div id="view-auditorium-context" class="context-view hidden">
         <div class="twin-header">
           <div class="venue-title-row">
             <span class="live-tag">VENUE TWIN</span>
             <h2>Mahatma Gandhi Auditorium</h2>
           </div>
-          <span class="venue-sub">Central Campus • Main Auditorium</span>
+          <span class="venue-sub">Central Campus • Main Assembly Complex (Building024)</span>
         </div>
 
         <div class="disclaimer-banner">
@@ -147,7 +466,7 @@
           </div>
         </div>
 
-        <!-- Telemetry Gauges -->
+        <!-- Telemetry Gauges Card -->
         <div class="gauge-card">
           <div class="gauge-top">
             <div class="gauge-metric">
@@ -168,6 +487,12 @@
               <span id="twin-utilization-value">61.7% Capacity</span>
               <span id="twin-flow-rate" class="mono-text">+12 /min</span>
             </div>
+            <div class="capacity-markers">
+              <span>0</span>
+              <span>50%</span>
+              <span class="marker-alert">80% Limit</span>
+              <span>2,400 Max</span>
+            </div>
           </div>
 
           <div class="telemetry-meta">
@@ -175,10 +500,10 @@
           </div>
         </div>
 
-        <!-- Simulation Controls -->
+        <!-- Simulation Controls Card -->
         <div class="controls-card">
           <div class="controls-header">
-            <h4>Simulation Controls</h4>
+            <h4>Simulation Engine Controls</h4>
             <button id="twin-sim-toggle" class="btn-toggle-sm active">Pause Auto-Tick</button>
           </div>
 
@@ -202,6 +527,19 @@
             </div>
           </div>
 
+          <!-- Theoretical Egress Clearance Physics Card -->
+          <div class="clearance-physics-card">
+            <div class="clearance-header">
+              <span class="clearance-title">Theoretical Clearance Rate</span>
+              <span class="text-cyan mono-text">6 Portals Active</span>
+            </div>
+            <div class="clearance-metric-row">
+              <span class="clearance-sub">Estimated Total Egress:</span>
+              <strong id="auditorium-clearance-time" class="text-cyan mono-text" style="font-size: 1.1rem;">~4m 12s</strong>
+            </div>
+            <p class="clearance-note">Assumes 6 external double-door lanes at 70 persons/min/lane (7 persons/sec) plus walking transit.</p>
+          </div>
+
           <!-- Threshold Settings Toggle -->
           <details class="threshold-details">
             <summary>⚙️ Configure Capacity & Alert Thresholds</summary>
@@ -220,66 +558,20 @@
               </div>
               <button id="config-save-btn" class="action-btn-sm full-width">Update Thresholds</button>
             </div>
-          </details>
+          </div>
         </div>
       </div>
 
-      
-      <!-- Section 2: Campus Route Planner -->
-      <div class="route-planner-section">
+      <!-- ============================================================= -->
+      <!-- VIEW 4: Campus Evacuation Egress Simulation View               -->
+      <!-- ============================================================= -->
+      <div id="view-evacuation-context" class="context-view hidden">
         <div class="evac-header">
           <div class="evac-title-row">
-            <span class="evac-tag">WAYFINDER</span>
-            <h3>Campus Route Planner</h3>
-          </div>
-          <span class="evac-sub">
-            Find and compare alternative routes between campus locations
-          </span>
-        </div>
-
-        <div class="route-planner-controls">
-          <div class="route-label-row">
-            <label for="nav-from">Starting location</label>
-            <button id="btn-swap-route" class="btn-swap-route" type="button" title="Swap Starting Location and Destination">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5M7 9l5-5 5 5M12 20V4"/></svg>
-              <span>Swap</span>
-            </button>
-          </div>
-          <select id="nav-from" class="select-input">
-            <option value="">Choose starting location</option>
-          </select>
-
-          <label for="nav-to">Destination</label>
-          <select id="nav-to" class="select-input">
-            <option value="">Choose destination</option>
-          </select>
-
-          <div class="evac-btn-row">
-            <button id="nav-find-btn" class="action-btn-primary">
-              Find Routes
-            </button>
-            <button id="nav-clear-btn" class="action-btn-secondary">
-              Clear
-            </button>
-          </div>
-        </div>
-
-        <div id="nav-route-status" class="route-status" aria-live="polite">
-          Choose two locations to plan your journey.
-        </div>
-
-        <div id="nav-route-results" class="nav-route-results"></div>
-      </div>
-
-
-      <!-- Section 2: Evacuation Routing Demonstration -->
-      <div class="evacuation-section">
-        <div class="evac-header">
-          <div class="evac-title-row">
-            <span class="evac-tag">GRAPH ROUTING</span>
+            <span class="evac-tag">EMERGENCY GRAPH</span>
             <h3>Evacuation Egress Routing</h3>
           </div>
-          <span class="evac-sub">Shortest-path algorithm via Wayfinder road graph</span>
+          <span class="evac-sub">Dijkstra shortest-path egress routing to perimeter gates</span>
         </div>
 
         <div class="evac-controls">
@@ -330,108 +622,102 @@
           </div>
         </div>
       </div>
+
     </aside>
   </main>
 
   <!-- Diagnostics Modal -->
-  <div id="modal-diagnostics" class="modal-backdrop hidden">
-    <div class="modal-box">
+  <div id="modal-diagnostics" class="modal-overlay hidden">
+    <div class="modal-card">
       <div class="modal-header">
-        <h3>Wayfinder Graph & 3D Alignment Diagnostics</h3>
-        <button class="modal-close">&times;</button>
+        <div class="modal-title-row">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+          <h3>Coordinate Alignment & Graph Diagnostics</h3>
+        </div>
+        <button class="modal-close" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-body">
-        <div id="diagnostics-summary" class="diag-summary-grid">
-          <!-- Injected via JS -->
+        <p class="modal-intro">
+          Mathematical proof of 1:1 metric scale and alignment between the <strong>Wayfinder Navigation Graph</strong> and the <strong>GLTF Campus Model</strong> (X/Z horizontal plane, +1.2m navigation elevation offset).
+        </p>
+
+        <div id="diagnostics-summary" class="diagnostics-summary-grid">
+          <!-- Populated via JS -->
         </div>
 
-        <h4>Verification: GLTF Building Mesh vs Entrance Waypoint Coordinates</h4>
-        <p class="modal-desc">
-          The table below demonstrates that Wayfinder waypoints (X, Z) exist in the <strong>exact same coordinate frame</strong> as the GLB 3D model with 1:1 scale and zero rotational offset.
-        </p>
-        <div class="table-container">
-          <table class="diag-table">
-            <thead>
-              <tr>
-                <th>Location</th>
-                <th>GLTF Mesh Center (X, Z)</th>
-                <th>Entrance Waypoint (X, Z)</th>
-                <th>Delta Distance</th>
-                <th>Alignment</th>
-              </tr>
-            </thead>
-            <tbody id="diagnostics-table-body">
-              <!-- Injected via JS -->
-            </tbody>
-          </table>
-        </div>
+        <table class="diagnostics-table">
+          <thead>
+            <tr>
+              <th>Campus Location</th>
+              <th>GLTF Center (X, Z)</th>
+              <th>Wayfinder Waypoint</th>
+              <th>Euclidean Delta</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="diagnostics-table-body">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
 
   <!-- AWS Cloud Architecture Modal -->
-  <div id="modal-aws" class="modal-backdrop hidden">
-    <div class="modal-box">
+  <div id="modal-aws" class="modal-overlay hidden">
+    <div class="modal-card modal-lg">
       <div class="modal-header">
-        <h3>AWS Cloud Hosting Architecture</h3>
-        <button class="modal-close">&times;</button>
+        <div class="modal-title-row">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+          <h3>Enterprise AWS Cloud Architecture Blueprint</h3>
+        </div>
+        <button class="modal-close" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-desc">
-          How this local Digital Twin prototype scales to an enterprise AWS cloud production architecture:
+        <p class="modal-intro">
+          Conceptual blueprint outlining how this local WebGL Digital Twin prototype scales into an enterprise-grade AWS cloud-backed production system.
         </p>
 
-        <div class="aws-architecture-grid">
-          <div class="aws-tier-card">
-            <div class="tier-number">Tier 1</div>
+        <div class="aws-pipeline-diagram">
+          <div class="aws-step">
+            <div class="step-num">1</div>
             <h4>Edge Ingestion</h4>
-            <p><strong>AWS IoT Core</strong></p>
-            <ul>
-              <li>MQTT broker ingests door optical counters & turnstiles.</li>
-              <li>Topic: <code>vitc/auditorium/building024/telemetry</code></li>
-              <li>Mutual TLS authentication (X.509 certificates).</li>
-            </ul>
+            <p>Campus turnstiles & optical door sensors publish telemetry via MQTT over mTLS.</p>
+            <span class="aws-badge">AWS IoT Core</span>
           </div>
-
-          <div class="aws-tier-card">
-            <div class="tier-number">Tier 2</div>
+          <div class="aws-arrow">➔</div>
+          <div class="aws-step">
+            <div class="step-num">2</div>
             <h4>Stream Processing</h4>
-            <p><strong>Amazon Kinesis & Lambda</strong></p>
-            <ul>
-              <li>Kinesis Data Streams handles high-throughput tick stream.</li>
-              <li>AWS Lambda sanitizes, computes utilization %, and fires alert notifications (Amazon SNS) if occupancy &gt; 80%.</li>
-            </ul>
+            <p>Ingests real-time ingress/egress events with sub-second buffering & fan-out.</p>
+            <span class="aws-badge">Amazon Kinesis</span>
           </div>
+          <div class="aws-arrow">➔</div>
+          <div class="aws-step">
+            <div class="step-num">3</div>
+            <h4>Serverless Compute</h4>
+            <p>Validates venue thresholds, computes moving averages & triggers alerts.</p>
+            <span class="aws-badge">AWS Lambda</span>
+          </div>
+          <div class="aws-arrow">➔</div>
+          <div class="aws-step">
+            <div class="step-num">4</div>
+            <h4>Dual Storage</h4>
+            <p>DynamoDB retains hot state; Timestream stores historical trends.</p>
+            <span class="aws-badge">DynamoDB + Timestream</span>
+          </div>
+          <div class="aws-arrow">➔</div>
+          <div class="aws-step">
+            <div class="step-num">5</div>
+            <h4>Client Distribution</h4>
+            <p>API Gateway WebSocket pushes real-time telemetry to WebGL clients.</p>
+            <span class="aws-badge">API Gateway + CloudFront</span>
+          </div>
+        </div>
 
-          <div class="aws-tier-card">
-            <div class="tier-number">Tier 3</div>
-            <h4>Time-Series & State</h4>
-            <p><strong>Amazon Timestream & DynamoDB</strong></p>
-            <ul>
-              <li>Timestream stores sub-second time-series history for analytics.</li>
-              <li>DynamoDB stores venue configurations, building metadata, and current occupancy cache.</li>
-            </ul>
-          </div>
-
-          <div class="aws-tier-card">
-            <div class="tier-number">Tier 4</div>
-            <h4>Spatial Digital Twin</h4>
-            <p><strong>AWS IoT TwinMaker</strong></p>
-            <ul>
-              <li>Binds 3D GLB model entities directly to Timestream component types.</li>
-              <li>Rule-based visual alarms when high threshold is breached.</li>
-            </ul>
-          </div>
-
-          <div class="aws-tier-card">
-            <div class="tier-number">Tier 5</div>
-            <h4>Global Web Delivery</h4>
-            <p><strong>Amazon S3 + CloudFront</strong></p>
-            <ul>
-              <li>Static WebGL bundle and 20MB GLB asset served via CloudFront CDN.</li>
-              <li>WebSocket API Gateway provides live telemetry pushing to browser.</li>
-            </ul>
-          </div>
+        <div class="aws-notes-box">
+          <strong>Academic Implementation Note:</strong>
+          <p>The current application runs as a self-contained local digital twin. All sensor data is algorithmically simulated to demonstrate how cloud-backed spatial twins operate prior to physical IoT turnstile deployment at VIT Chennai.</p>
         </div>
       </div>
     </div>

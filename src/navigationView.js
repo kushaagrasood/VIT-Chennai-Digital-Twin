@@ -192,21 +192,22 @@ export class NavigationView {
   /**
    * Display evacuation route on 3D scene
    */
-  displayEvacuationRoute(routeWaypoints) {
+  displayEvacuationRoute(routeWaypoints, options = {}) {
     this.evacuationGroup.clear();
     if (!routeWaypoints || routeWaypoints.length < 2) return;
 
+    const isEvacuation = options.isEvacuation ?? false;
     const points = routeWaypoints.map(wp =>
       new THREE.Vector3(wp.x, wp.y + this.elevationOffset + 0.6, wp.z)
     );
 
-    // 1. Route curve / path line
+    // 1. Route curve / path line (Cyan for walking transit, Red/Amber for emergency evacuation)
     const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.1);
     const tubeGeo = new THREE.TubeGeometry(curve, points.length * 8, 1.2, 8, false);
     const tubeMat = new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      emissive: 0xd97706,
-      emissiveIntensity: 0.8,
+      color: isEvacuation ? 0xef4444 : 0x00d4ff,
+      emissive: isEvacuation ? 0xd97706 : 0x0284c7,
+      emissiveIntensity: 0.85,
       roughness: 0.2
     });
 
@@ -214,20 +215,22 @@ export class NavigationView {
     this.evacuationGroup.add(routeMesh);
 
     // 2. Waypoint node markers along route
-    const nodeGeo = new THREE.SphereGeometry(2.2, 12, 12);
-    const nodeMat = new THREE.MeshBasicMaterial({ color: 0xffedd5 });
+    const nodeGeo = new THREE.SphereGeometry(2.0, 12, 12);
+    const nodeMat = new THREE.MeshBasicMaterial({
+      color: isEvacuation ? 0xffedd5 : 0xbae6fd
+    });
     points.forEach(p => {
       const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
       nodeMesh.position.copy(p);
       this.evacuationGroup.add(nodeMesh);
     });
 
-    // 3. Exit Gateway beacon at the terminus
+    // 3. Exit Gateway / Arrival beacon at the terminus
     const exitPos = points[points.length - 1];
     const exitRingGeo = new THREE.RingGeometry(5, 8, 32);
     exitRingGeo.rotateX(-Math.PI / 2);
     const exitRingMat = new THREE.MeshBasicMaterial({
-      color: 0x10b981,
+      color: isEvacuation ? 0x10b981 : 0x38bdf8,
       side: THREE.DoubleSide
     });
     const exitRing = new THREE.Mesh(exitRingGeo, exitRingMat);

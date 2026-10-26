@@ -13,6 +13,7 @@ export class UIController {
 
     this.isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
+    this.activeView = 'explorer';
     this.selectedBuildingKey = 'Building024';
     this.currentCategory = 'all';
     this.searchQuery = '';
@@ -22,13 +23,27 @@ export class UIController {
     this.selectedNavigationRouteIndex = -1; 
 
     this.dom = {
+      // Header & Navigation Mode Switcher
+      navTabs: document.querySelectorAll('.nav-tab'),
+      subBarActiveVenue: document.getElementById('sub-bar-active-venue'),
+
+      // Contextual Views (Right Panel)
+      viewExplorer: document.getElementById('view-explorer-context'),
+      viewRoutes: document.getElementById('view-routes-context'),
+      viewAuditorium: document.getElementById('view-auditorium-context'),
+      viewEvacuation: document.getElementById('view-evacuation-context'),
+
+      // Left Panel Containers (Directory vs Auditorium Structure Inspector)
+      panelDirectory: document.getElementById('campus-directory-container'),
+      panelInspector: document.getElementById('auditorium-inspector-container'),
+
       // Search & Filters
       searchInput: document.getElementById('search-input'),
       categoryPills: document.querySelectorAll('.cat-pill'),
       buildingList: document.getElementById('building-list'),
       buildingCountBadge: document.getElementById('building-count'),
 
-      // Selected Location Card
+      // Selected Location Card (Explorer View)
       locationCard: document.getElementById('location-detail-card'),
       locName: document.getElementById('loc-name'),
       locKey: document.getElementById('loc-key'),
@@ -37,7 +52,24 @@ export class UIController {
       locFocusBtn: document.getElementById('loc-focus-btn'),
       locDirectionsBtn: document.getElementById('loc-directions-btn'),
 
-      // Digital Twin Elements
+      // Floating Viewport Selection Card
+      vpSelectionCard: document.getElementById('viewport-selection-card'),
+      vpSelectedName: document.getElementById('vp-selected-name'),
+      vpSelectedCat: document.getElementById('vp-selected-cat'),
+      vpSelectedId: document.getElementById('vp-selected-id'),
+      vpFocusBtn: document.getElementById('vp-focus-btn'),
+      vpDirectionsBtn: document.getElementById('vp-directions-btn'),
+      btnCloseSelection: document.getElementById('btn-close-selection'),
+
+      // Quick Launch Actions & Previews
+      btnLaunchAuditoriumTwin: document.getElementById('btn-launch-auditorium-twin'),
+      btnOpenRoutePlanner: document.getElementById('btn-open-route-planner'),
+      previewOccVal: document.getElementById('preview-occ-val'),
+      previewStatusBadge: document.getElementById('preview-status-badge'),
+      auditoriumClearanceTime: document.getElementById('auditorium-clearance-time'),
+      heatmapLegend: document.getElementById('heatmap-legend'),
+
+      // Digital Twin Elements (Auditorium View)
       occupancyValue: document.getElementById('twin-occupancy-value'),
       capacityValue: document.getElementById('twin-capacity-value'),
       utilizationValue: document.getElementById('twin-utilization-value'),
@@ -54,7 +86,6 @@ export class UIController {
       threshHighInput: document.getElementById('config-high-thresh'),
       saveConfigBtn: document.getElementById('config-save-btn'),
 
-      
       // Campus Route Planner
       navFrom: document.getElementById('nav-from'),
       navTo: document.getElementById('nav-to'),
@@ -124,6 +155,55 @@ export class UIController {
       });
     });
 
+    // 0. Header Navigation Mode Tabs (Stitch Multi-View Switcher)
+    this.dom.navTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const view = tab.dataset.view;
+        if (view) this.switchView(view);
+      });
+    });
+
+    // Quick launch buttons
+    if (this.dom.btnLaunchAuditoriumTwin) {
+      this.dom.btnLaunchAuditoriumTwin.addEventListener('click', () => {
+        this.switchView('auditorium');
+      });
+    }
+    if (this.dom.btnOpenRoutePlanner) {
+      this.dom.btnOpenRoutePlanner.addEventListener('click', () => {
+        this.switchView('routes');
+      });
+    }
+
+    // Viewport Contextual Selection Card Buttons
+    if (this.dom.btnCloseSelection) {
+      this.dom.btnCloseSelection.addEventListener('click', () => {
+        if (this.dom.vpSelectionCard) {
+          this.dom.vpSelectionCard.classList.add('hidden');
+        }
+      });
+    }
+    if (this.dom.vpFocusBtn) {
+      this.dom.vpFocusBtn.addEventListener('click', () => {
+        if (this.selectedBuildingKey) {
+          this.scene.focusBuilding(this.selectedBuildingKey);
+        }
+      });
+    }
+    if (this.dom.vpDirectionsBtn) {
+      this.dom.vpDirectionsBtn.addEventListener('click', () => {
+        if (this.selectedBuildingKey) {
+          if (this.dom.navTo) {
+            this.dom.navTo.value = this.selectedBuildingKey;
+          }
+          this.switchView('routes');
+          if (this.dom.navFrom?.value && this.dom.navFrom.value !== this.selectedBuildingKey) {
+            this.findNavigationRoutes();
+          }
+        }
+      });
+    }
+
     // 3. Camera HUD controls
     if (this.dom.resetCamBtn) {
       this.dom.resetCamBtn.addEventListener('click', () => this.scene.resetCamera());
@@ -133,7 +213,7 @@ export class UIController {
     }
     if (this.dom.focusAuditoriumBtn) {
       this.dom.focusAuditoriumBtn.addEventListener('click', () => {
-        this.selectBuilding('Building024');
+        this.switchView('auditorium');
       });
     }
     if (this.dom.btnToggleHeatmap) {
@@ -141,6 +221,9 @@ export class UIController {
         const next = !this.scene.heatmapEnabled;
         this.scene.setHeatmapEnabled(next);
         this.dom.btnToggleHeatmap.classList.toggle('active', next);
+        if (this.dom.heatmapLegend) {
+          this.dom.heatmapLegend.classList.toggle('hidden', !next);
+        }
       });
     }
 
@@ -151,7 +234,7 @@ export class UIController {
       });
     }
 
-    // 4. Location card focus button
+    // 4. Location card focus & directions buttons
     if (this.dom.locFocusBtn) {
       this.dom.locFocusBtn.addEventListener('click', () => {
         if (this.selectedBuildingKey) {
@@ -166,8 +249,7 @@ export class UIController {
           if (this.dom.navTo) {
             this.dom.navTo.value = this.selectedBuildingKey;
           }
-          const section = document.querySelector('.route-planner-section');
-          if (section) section.scrollIntoView({ behavior: 'smooth' });
+          this.switchView('routes');
           if (this.dom.navFrom?.value && this.dom.navFrom.value !== this.selectedBuildingKey) {
             this.findNavigationRoutes();
           }
@@ -299,6 +381,62 @@ export class UIController {
     };
   }
 
+  /**
+   * Switch active application view mode (Stitch Multi-View System)
+   * @param {'explorer'|'routes'|'auditorium'|'evacuation'} viewName
+   */
+  switchView(viewName) {
+    this.activeView = viewName;
+
+    // 1. Update Tabs
+    this.dom.navTabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.view === viewName);
+    });
+
+    // 2. Update Right Sidebar Contextual Views
+    const views = {
+      explorer: this.dom.viewExplorer,
+      routes: this.dom.viewRoutes,
+      auditorium: this.dom.viewAuditorium,
+      evacuation: this.dom.viewEvacuation
+    };
+
+    Object.entries(views).forEach(([name, el]) => {
+      if (el) {
+        el.classList.toggle('hidden', name !== viewName);
+      }
+    });
+
+    // 3. Update Left Sidebar (Campus Directory vs MG Auditorium Spatial Inspector)
+    if (viewName === 'auditorium') {
+      if (this.dom.panelDirectory) this.dom.panelDirectory.classList.add('hidden');
+      if (this.dom.panelInspector) this.dom.panelInspector.classList.remove('hidden');
+      if (this.dom.subBarActiveVenue) this.dom.subBarActiveVenue.textContent = 'MG AUDITORIUM (BLDG 024)';
+
+      // Focus on MG Auditorium in 3D scene
+      this.selectBuilding('Building024', true);
+    } else {
+      if (this.dom.panelDirectory) this.dom.panelDirectory.classList.remove('hidden');
+      if (this.dom.panelInspector) this.dom.panelInspector.classList.add('hidden');
+
+      if (this.selectedBuildingKey) {
+        const b = this.graph.buildings.get(this.selectedBuildingKey);
+        if (this.dom.subBarActiveVenue) {
+          this.dom.subBarActiveVenue.textContent = b ? `${b.displayName.toUpperCase()} (${b.key})` : 'CAMPUS OVERVIEW';
+        }
+      }
+    }
+
+    // 4. Mode-specific adjustments
+    if (viewName === 'routes') {
+      if (this.selectedBuildingKey && this.dom.navTo && !this.dom.navTo.value) {
+        this.dom.navTo.value = this.selectedBuildingKey;
+      }
+    } else if (viewName === 'evacuation') {
+      this.updateEvacuationRoutes();
+    }
+  }
+
   categorizeBuilding(key, name) {
     const k = key.toLowerCase();
     const n = name.toLowerCase();
@@ -384,6 +522,24 @@ export class UIController {
       this.navView.highlightEntrance(b.primaryEntranceId);
     }
 
+    const cat = this.categorizeBuilding(b.key, b.displayName);
+
+    // Update floating viewport selection card
+    if (this.dom.vpSelectionCard) {
+      this.dom.vpSelectionCard.classList.remove('hidden');
+      if (this.dom.vpSelectedName) this.dom.vpSelectedName.textContent = b.displayName;
+      if (this.dom.vpSelectedCat) this.dom.vpSelectedCat.textContent = cat.toUpperCase();
+      if (this.dom.vpSelectedId) {
+        this.dom.vpSelectedId.textContent = b.key;
+        this.dom.vpSelectedId.classList.toggle('hidden', !this.isDebug);
+      }
+    }
+
+    // Update sub-bar active venue
+    if (this.activeView !== 'auditorium' && this.dom.subBarActiveVenue) {
+      this.dom.subBarActiveVenue.textContent = `${b.displayName.toUpperCase()} (${b.key})`;
+    }
+
     // Update location card
     if (this.dom.locationCard) {
       this.dom.locationCard.classList.remove('hidden');
@@ -411,6 +567,16 @@ export class UIController {
         this.dom.locKey?.classList.add('hidden');
         this.dom.locEntrance?.classList.add('hidden');
         this.dom.locCoords?.classList.add('hidden');
+      }
+    }
+
+    // Highlight or update explorer auditorium preview if relevant
+    const previewEl = document.getElementById('explorer-auditorium-preview');
+    if (previewEl) {
+      if (key === 'Building024') {
+        previewEl.style.borderColor = 'rgba(0, 212, 255, 0.4)';
+      } else {
+        previewEl.style.borderColor = 'rgba(255, 255, 255, 0.08)';
       }
     }
   }
@@ -537,7 +703,24 @@ export class UIController {
         }
       }
 
-      // 10. Inputs sync
+      // 10. Synchronize preview card in Explorer view
+      if (this.dom.previewOccVal) {
+        this.dom.previewOccVal.textContent = state.occupancy.toLocaleString();
+      }
+      if (this.dom.previewStatusBadge) {
+        this.dom.previewStatusBadge.textContent = state.statusLabel;
+        this.dom.previewStatusBadge.style.backgroundColor = `${state.statusColor}22`;
+        this.dom.previewStatusBadge.style.borderColor = state.statusColor;
+        this.dom.previewStatusBadge.style.color = state.statusColor;
+      }
+      if (this.dom.auditoriumClearanceTime) {
+        const clearanceSec = Math.round(state.occupancy / 7);
+        const mins = Math.floor(clearanceSec / 60);
+        const secs = clearanceSec % 60;
+        this.dom.auditoriumClearanceTime.textContent = `~${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+      }
+
+      // 11. Inputs sync
       if (this.dom.occupancySlider && document.activeElement !== this.dom.occupancySlider) {
         this.dom.occupancySlider.max = Math.round(state.capacity * 1.15);
         this.dom.occupancySlider.value = state.occupancy;
@@ -723,8 +906,8 @@ export class UIController {
 
     this.selectedNavigationRouteIndex = index;
 
-    // Reuse the existing 3D route renderer.
-    this.navView.displayEvacuationRoute(route.waypoints);
+    // Render walking transit route in luminous cyan
+    this.navView.displayEvacuationRoute(route.waypoints, { isEvacuation: false });
 
     const cards = this.dom.navRouteResults.querySelectorAll('.nav-route-card');
     cards.forEach((card, cardIndex) => {
@@ -888,8 +1071,8 @@ export class UIController {
 
     if (!route) return;
 
-    // Draw the route in the 3D campus.
-    this.navView.displayEvacuationRoute(route.waypoints);
+    // Draw emergency evacuation route in alerting red
+    this.navView.displayEvacuationRoute(route.waypoints, { isEvacuation: true });
 
     const metrics = this.twin.calculateEvacuationMetrics(
       route.distanceMeters

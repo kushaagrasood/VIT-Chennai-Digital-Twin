@@ -297,6 +297,21 @@ export class CampusScene {
   }
 
   /**
+   * Smoothly interpolate camera position and look-at target
+   */
+  animateCameraTo(targetPos, targetLookAt, duration = 1000) {
+    this.isTransitioningCamera = true;
+    this.cameraAnim = {
+      startTime: performance.now(),
+      duration: Math.max(100, duration),
+      startPos: this.camera.position.clone(),
+      targetPos: targetPos.clone(),
+      startTarget: this.controls.target.clone(),
+      targetLookAt: targetLookAt.clone()
+    };
+  }
+
+  /**
    * Reset camera smoothly back to default campus overview
    */
   resetCamera(duration = 1000) {

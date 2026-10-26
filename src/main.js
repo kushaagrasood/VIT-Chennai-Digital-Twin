@@ -10,6 +10,7 @@ async function bootstrap() {
 
   // 1. Initialize Wayfinder Graph
   const graph = new WayfinderGraph();
+  let scene = null;
 
   // 2. Fetch and parse Wayfinder datasets with resilient fallback
   let dataLoaded = false;
@@ -108,7 +109,7 @@ async function bootstrap() {
   let ui = null;
   let navView = null;
 
-  const scene = new CampusScene(canvasContainer, {
+  scene = new CampusScene(canvasContainer, {
     graph,
     getBuildingDisplayName: (key) => graph.buildings.get(key)?.displayName,
     onProgress: (p) => {
