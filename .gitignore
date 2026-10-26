@@ -9,5 +9,7 @@ __pycache__/
 *.py[cod]
 .DS_Store
 Thumbs.db
-AI notes/
+AI_notes/
 SESSION_NOTES.md
+scratch/
+scratch/

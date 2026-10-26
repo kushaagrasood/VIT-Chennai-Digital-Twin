@@ -85,10 +85,16 @@
         </div>
         <p id="loc-entrance" class="detail-row hidden">Entrance WP: 199</p>
         <p id="loc-coords" class="detail-coords mono-text hidden">Local Coords: [X: 70.3, Z: 328.5]</p>
-        <button id="loc-focus-btn" class="action-btn-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-          Center Camera
-        </button>
+        <div class="card-btn-row">
+          <button id="loc-focus-btn" class="action-btn-sm" title="Center camera on building">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+            <span>Center</span>
+          </button>
+          <button id="loc-directions-btn" class="action-btn-sm action-btn-accent" title="Set as navigation destination">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            <span>Directions</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -109,6 +115,10 @@
         <button id="btn-focus-auditorium" class="hud-btn highlight-hud" title="Focus Mahatma Gandhi Auditorium">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           <span>MG Auditorium</span>
+        </button>
+        <button id="btn-toggle-heatmap" class="hud-btn" title="Toggle Campus Crowd Density Heatmap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
+          <span>Crowd Heatmap</span>
         </button>
         <button id="btn-toggle-nav" class="hud-btn" title="Toggle Wayfinder Road Graph">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="19" r="3"/><path d="M8 8l8 8"/></svg>
@@ -228,7 +238,13 @@
         </div>
 
         <div class="route-planner-controls">
-          <label for="nav-from">Starting location</label>
+          <div class="route-label-row">
+            <label for="nav-from">Starting location</label>
+            <button id="btn-swap-route" class="btn-swap-route" type="button" title="Swap Starting Location and Destination">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7 15 5 5 5-5M7 9l5-5 5 5M12 20V4"/></svg>
+              <span>Swap</span>
+            </button>
+          </div>
           <select id="nav-from" class="select-input">
             <option value="">Choose starting location</option>
           </select>

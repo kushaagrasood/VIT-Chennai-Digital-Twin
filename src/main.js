@@ -29,6 +29,7 @@ async function bootstrap() {
       graph.loadWaypoints(rawWaypoints);
       graph.buildGraph(rawOneWayRoads);
       graph.loadBuildingEntrances(rawEntrances);
+      if (scene) scene.setGraph(graph);
 
       
       // Diagnostic tests enabled only in debug mode (?debug=true)
@@ -85,6 +86,7 @@ async function bootstrap() {
         graph.loadWaypoints(pathData.waypoints);
         graph.buildGraph(pathData.oneWayRoads);
         graph.loadBuildingEntrances(pathData.buildingEntrances);
+        if (scene) scene.setGraph(graph);
         dataLoaded = true;
         console.log('Wayfinder data successfully loaded from fallback /path.json');
       }
@@ -107,6 +109,8 @@ async function bootstrap() {
   let navView = null;
 
   const scene = new CampusScene(canvasContainer, {
+    graph,
+    getBuildingDisplayName: (key) => graph.buildings.get(key)?.displayName,
     onProgress: (p) => {
       if (ui) {
         ui.updateLoading(

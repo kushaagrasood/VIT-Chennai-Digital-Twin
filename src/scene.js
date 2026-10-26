@@ -5,12 +5,14 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 export class CampusScene {
   constructor(canvasContainer, options = {}) {
     this.container = canvasContainer;
+    this.graph = options.graph || null;
     this.callbacks = {
       onProgress: options.onProgress || (() => {}),
       onLoaded: options.onLoaded || (() => {}),
       onError: options.onError || (() => {}),
       onBuildingClick: options.onBuildingClick || (() => {}),
-      onBuildingHover: options.onBuildingHover || (() => {})
+      onBuildingHover: options.onBuildingHover || (() => {}),
+      getBuildingDisplayName: options.getBuildingDisplayName || null
     };
 
     // State
@@ -68,7 +70,9 @@ export class CampusScene {
       position: 'fixed',
       display: 'none',
       zIndex: '10000',
-      width: '210px',
+      width: '220px',
+      maxWidth: 'calc(100vw - 20px)',
+      boxSizing: 'border-box',
       padding: '12px 14px',
       borderRadius: '12px',
       background: 'rgba(10, 15, 29, 0.96)',
@@ -424,6 +428,44 @@ export class CampusScene {
 
   
   /**
+   * Set or update graph reference dynamically
+   */
+  setGraph(graph) {
+    this.graph = graph;
+  }
+
+  /**
+   * Update crowd-density value for an individual building.
+   */
+  setBuildingDensity(buildingKey, density) {
+    const clamped = Math.max(0, Math.min(1, Number(density) || 0));
+    this.buildingCrowdDensities.set(buildingKey, clamped);
+
+    if (this.heatmapEnabled) {
+      this.refreshBuildingAppearance();
+    } else if (this.hoveredHeatmapKey === buildingKey) {
+      // Refresh hovered building tint
+      const mesh = this.buildingMeshes.get(buildingKey);
+      if (mesh) {
+        const material = this.getHeatmapMaterial(mesh);
+        if (material) {
+          const color = this.getDensityColor(clamped);
+          const applyColor = (mat) => {
+            if (mat.color) mat.color.setHex(color);
+            if (mat.emissive) {
+              mat.emissive.setHex(color);
+              mat.emissiveIntensity = 0.3;
+            }
+          };
+          if (Array.isArray(material)) material.forEach(applyColor);
+          else applyColor(material);
+          mesh.material = material;
+        }
+      }
+    }
+  }
+
+  /**
    * Update crowd-density values for buildings.
    * densityByBuilding can be a Map or a plain object.
    * Each density is between 0 and 1.
@@ -522,13 +564,34 @@ export class CampusScene {
 
     this.densityPopup.append(title, statusLine, percentageLine, bar, note);
 
-    this.densityPopup.style.left =
-      `${Math.max(8, Math.min(x + 16, window.innerWidth - 235))}px`;
-
-    this.densityPopup.style.top =
-      `${Math.max(8, Math.min(y + 16, window.innerHeight - 145))}px`;
-
+    // Make visible to measure dimensions for viewport clamping
     this.densityPopup.style.display = 'block';
+
+    // Screen-edge clamping & smart viewport flip logic for narrow viewports
+    const popupWidth = this.densityPopup.offsetWidth || 220;
+    const popupHeight = this.densityPopup.offsetHeight || 140;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 10;
+
+    // Flip horizontally if placing to the right of cursor overflows viewport
+    let posX = x + 16;
+    if (posX + popupWidth > viewportWidth - padding) {
+      posX = x - popupWidth - 16;
+    }
+    // Strict horizontal clamping
+    posX = Math.max(padding, Math.min(posX, Math.max(padding, viewportWidth - popupWidth - padding)));
+
+    // Flip vertically if placing below cursor overflows viewport
+    let posY = y + 16;
+    if (posY + popupHeight > viewportHeight - padding) {
+      posY = y - popupHeight - 16;
+    }
+    // Strict vertical clamping
+    posY = Math.max(padding, Math.min(posY, Math.max(padding, viewportHeight - popupHeight - padding)));
+
+    this.densityPopup.style.left = `${Math.round(posX)}px`;
+    this.densityPopup.style.top = `${Math.round(posY)}px`;
   }
 
   hideDensityPopup() {
@@ -538,46 +601,63 @@ export class CampusScene {
   }
 
   getBuildingDisplayName(buildingKey) {
-    const buildingNames = {
-        'Building': 'D1 Block Hostel',
-        'Building001': 'Academic Block 3',
-        'Building002': 'A Block hostel',
-        'Building003': 'Academic Block 4',
-        'Building004': 'D2 Block Hostel',
-        'Building005': 'E Block Hostel',
-        'Building006': 'Academic Block 2',
-        'Building007': 'Academic Block 1',
-        'Building008': 'Swimming Pool',
-        'Building009': 'Sigma Block',
-        'Building010': 'GymKhaana',
-        'Building011': 'Admin Block',
-        'Building012': 'North Square',
-        'Building013': 'Alpha Block',
-        'Building014': 'Academic Block 5',
-        'Building015': 'Tennis Court',
-        'Building016': 'Football Ground',
-        'Building017': 'Basketball Court',
-        'Building018': 'Volleyball Court',
-        'Building019': 'Ground',
-        'Building020': 'Omega Block',
-        'Building021': 'Cricket Ground',
-        'Building022': 'Guest House',
-        'Building023': "Student's Parking",
-        'Building024': 'Mahatma Gandhi Auditorium',
-        'Building025': 'VIT-SEDAXIS',
-        'Building026': "Student's Parking 2",
-        'Building027': 'Staff Parking 1',
-        'Building028': 'Staff Parking 2',
-        'Building029': 'Gazebo',
-        'Building030': 'B Block Hostel',
-        'Building031': 'C Block Hostel',
-        'Building032': 'Site Office',
-        'Building033': 'Transport Office',
-        'Main_Gate': 'Main Gate',
-        'Gate': '2nd Gate'
+    if (!buildingKey) return '';
+
+    // 1. Dynamic lookup via attached WayfinderGraph instance
+    if (this.graph && typeof this.graph.buildings?.get === 'function') {
+      const building = this.graph.buildings.get(buildingKey);
+      if (building && building.displayName) {
+        return building.displayName;
+      }
+    }
+
+    // 2. Dynamic lookup via callback if configured
+    if (typeof this.callbacks.getBuildingDisplayName === 'function') {
+      const name = this.callbacks.getBuildingDisplayName(buildingKey);
+      if (name) return name;
+    }
+
+    // 3. Fallback dictionary (resilience guarantee if datasets fail)
+    const fallbackBuildingNames = {
+      'Building': 'D1 Block Hostel',
+      'Building001': 'Academic Block 3',
+      'Building002': 'A Block hostel',
+      'Building003': 'Academic Block 4',
+      'Building004': 'D2 Block Hostel',
+      'Building005': 'E Block Hostel',
+      'Building006': 'Academic Block 2',
+      'Building007': 'Academic Block 1',
+      'Building008': 'Swimming Pool',
+      'Building009': 'Sigma Block',
+      'Building010': 'GymKhaana',
+      'Building011': 'Admin Block',
+      'Building012': 'North Square',
+      'Building013': 'Alpha Block',
+      'Building014': 'Academic Block 5',
+      'Building015': 'Tennis Court',
+      'Building016': 'Football Ground',
+      'Building017': 'Basketball Court',
+      'Building018': 'Volleyball Court',
+      'Building019': 'Ground',
+      'Building020': 'Omega Block',
+      'Building021': 'Cricket Ground',
+      'Building022': 'Guest House',
+      'Building023': "Student's Parking",
+      'Building024': 'Mahatma Gandhi Auditorium',
+      'Building025': 'VIT-SEDAXIS',
+      'Building026': "Student's Parking 2",
+      'Building027': 'Staff Parking 1',
+      'Building028': 'Staff Parking 2',
+      'Building029': 'Gazebo',
+      'Building030': 'B Block Hostel',
+      'Building031': 'C Block Hostel',
+      'Building032': 'Site Office',
+      'Building033': 'Transport Office',
+      'Main_Gate': 'Main Gate',
+      'Gate': '2nd Gate'
     };
 
-    return buildingNames[buildingKey] || buildingKey;
+    return fallbackBuildingNames[buildingKey] || buildingKey;
   }
 
 

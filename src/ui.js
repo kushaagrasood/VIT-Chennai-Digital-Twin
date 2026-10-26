@@ -35,6 +35,7 @@ export class UIController {
       locEntrance: document.getElementById('loc-entrance'),
       locCoords: document.getElementById('loc-coords'),
       locFocusBtn: document.getElementById('loc-focus-btn'),
+      locDirectionsBtn: document.getElementById('loc-directions-btn'),
 
       // Digital Twin Elements
       occupancyValue: document.getElementById('twin-occupancy-value'),
@@ -57,6 +58,7 @@ export class UIController {
       // Campus Route Planner
       navFrom: document.getElementById('nav-from'),
       navTo: document.getElementById('nav-to'),
+      btnSwapRoute: document.getElementById('btn-swap-route'),
       navFindBtn: document.getElementById('nav-find-btn'),
       navClearBtn: document.getElementById('nav-clear-btn'),
       navRouteStatus: document.getElementById('nav-route-status'),
@@ -79,6 +81,7 @@ export class UIController {
       resetCamBtn: document.getElementById('btn-reset-cam'),
       topDownBtn: document.getElementById('btn-top-down'),
       focusAuditoriumBtn: document.getElementById('btn-focus-auditorium'),
+      btnToggleHeatmap: document.getElementById('btn-toggle-heatmap'),
       toggleNavBtn: document.getElementById('btn-toggle-nav'),
 
       // Modals
@@ -133,6 +136,14 @@ export class UIController {
         this.selectBuilding('Building024');
       });
     }
+    if (this.dom.btnToggleHeatmap) {
+      this.dom.btnToggleHeatmap.addEventListener('click', () => {
+        const next = !this.scene.heatmapEnabled;
+        this.scene.setHeatmapEnabled(next);
+        this.dom.btnToggleHeatmap.classList.toggle('active', next);
+      });
+    }
+
     if (this.dom.toggleNavBtn) {
       this.dom.toggleNavBtn.addEventListener('click', () => {
         const isVis = this.navView.toggle();
@@ -145,6 +156,21 @@ export class UIController {
       this.dom.locFocusBtn.addEventListener('click', () => {
         if (this.selectedBuildingKey) {
           this.scene.focusBuilding(this.selectedBuildingKey);
+        }
+      });
+    }
+
+    if (this.dom.locDirectionsBtn) {
+      this.dom.locDirectionsBtn.addEventListener('click', () => {
+        if (this.selectedBuildingKey) {
+          if (this.dom.navTo) {
+            this.dom.navTo.value = this.selectedBuildingKey;
+          }
+          const section = document.querySelector('.route-planner-section');
+          if (section) section.scrollIntoView({ behavior: 'smooth' });
+          if (this.dom.navFrom?.value && this.dom.navFrom.value !== this.selectedBuildingKey) {
+            this.findNavigationRoutes();
+          }
         }
       });
     }
@@ -183,6 +209,18 @@ export class UIController {
 
     
     // Campus route planner controls
+    if (this.dom.btnSwapRoute) {
+      this.dom.btnSwapRoute.addEventListener('click', () => {
+        const fromVal = this.dom.navFrom?.value;
+        const toVal = this.dom.navTo?.value;
+        if (this.dom.navFrom) this.dom.navFrom.value = toVal;
+        if (this.dom.navTo) this.dom.navTo.value = fromVal;
+        if (fromVal && toVal && fromVal !== toVal) {
+          this.findNavigationRoutes();
+        }
+      });
+    }
+
     if (this.dom.navFindBtn) {
       this.dom.navFindBtn.addEventListener('click', () => {
         this.findNavigationRoutes();
@@ -245,6 +283,14 @@ export class UIController {
         if (this.dom.diagnosticsModal) this.dom.diagnosticsModal.classList.add('hidden');
         if (this.dom.awsModal) this.dom.awsModal.classList.add('hidden');
       });
+    });
+
+    // Keyboard shortcut (Ctrl+Shift+D or Cmd+Shift+D) to toggle debug mode
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault();
+        this.toggleDebugMode();
+      }
     });
 
     // 8. 3D Scene callbacks
@@ -375,6 +421,9 @@ export class UIController {
 
     if (selects.some(select => !select)) return;
 
+    const prevFrom = this.dom.navFrom?.value;
+    const prevTo = this.dom.navTo?.value;
+
     const buildings = Array.from(this.graph.buildings.values())
       .filter(building =>
         this.graph.getBuildingEntrances(building.key).length > 0
@@ -403,12 +452,16 @@ export class UIController {
       });
     });
 
-    // Start with the currently selected building as the origin.
-    if (this.graph.buildings.has(this.selectedBuildingKey)) {
+    // Restore previous selection or default to selected building
+    if (prevFrom && this.graph.buildings.has(prevFrom)) {
+      this.dom.navFrom.value = prevFrom;
+    } else if (this.graph.buildings.has(this.selectedBuildingKey)) {
       this.dom.navFrom.value = this.selectedBuildingKey;
     }
 
-    if (this.dom.navTo.value === this.dom.navFrom.value) {
+    if (prevTo && this.graph.buildings.has(prevTo) && prevTo !== this.dom.navFrom.value) {
+      this.dom.navTo.value = prevTo;
+    } else if (this.dom.navTo.value === this.dom.navFrom.value) {
       this.dom.navTo.value = '';
     }
   }
@@ -458,7 +511,33 @@ export class UIController {
         this.dom.simLiveToggle.classList.toggle('active', state.isLive);
       }
 
-      // 7. Inputs sync
+      // 7. Highlight active preset button
+      this.dom.presetBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.preset === state.activePreset);
+      });
+
+      // 8. Synchronize auditorium crowd density in 3D scene
+      if (this.scene && typeof this.scene.setBuildingDensity === 'function') {
+        const auditoriumDensity = Math.max(0, Math.min(1, state.occupancy / state.capacity));
+        this.scene.setBuildingDensity('Building024', auditoriumDensity);
+      }
+
+      // 9. Synchronize live evacuation egress time if MG Auditorium evacuation card is visible
+      if (
+        this.dom.evacResultCard &&
+        !this.dom.evacResultCard.classList.contains('hidden') &&
+        this.selectedBuildingKey === 'Building024'
+      ) {
+        const route = this.evacRoutes[this.currentEvacRouteIndex];
+        if (route) {
+          const metrics = this.twin.calculateEvacuationMetrics(route.distanceMeters);
+          if (this.dom.evacTotalTime) {
+            this.dom.evacTotalTime.textContent = metrics.formattedTime;
+          }
+        }
+      }
+
+      // 10. Inputs sync
       if (this.dom.occupancySlider && document.activeElement !== this.dom.occupancySlider) {
         this.dom.occupancySlider.max = Math.round(state.capacity * 1.15);
         this.dom.occupancySlider.value = state.occupancy;
@@ -542,6 +621,35 @@ export class UIController {
     this.selectedNavigationRouteIndex = -1;
 
     if (!this.navigationRoutes.length) {
+      // Check if the buildings share an entrance (directly adjacent)
+      const sharedEntrances = starts.filter(s => goals.includes(s));
+      if (sharedEntrances.length > 0) {
+        const sharedId = sharedEntrances[0];
+        this.dom.navRouteResults.innerHTML = '';
+
+        const card = document.createElement('div');
+        card.className = 'nav-route-card selected';
+
+        const heading = document.createElement('div');
+        heading.className = 'nav-route-card-header';
+        heading.innerHTML = `<strong>Directly Adjacent (Shared Entrance)</strong><span class="mono-text">0 m</span>`;
+
+        const summary = document.createElement('p');
+        summary.innerHTML = `<strong>${fromBuilding.displayName}</strong> and <strong>${toBuilding.displayName}</strong> share the same entrance area.`;
+
+        const details = document.createElement('p');
+        details.className = 'route-details';
+        details.style.color = '#10b981';
+        details.innerHTML = 'Walking distance is negligible (&lt; 10 m). You are already at your destination.';
+
+        card.append(heading, summary, details);
+        this.dom.navRouteResults.appendChild(card);
+
+        this.navView.highlightEntrance(sharedId);
+        this.setNavigationStatus('Locations share a common entrance area.');
+        return;
+      }
+
       this.dom.navRouteResults.innerHTML = '';
       this.setNavigationStatus('No connected route was found between these locations.');
       return;
@@ -635,6 +743,31 @@ export class UIController {
     if (this.isDebug) {
       console.log('Navigation route displayed:', route);
     }
+  }
+
+
+  toggleDebugMode(forcedState) {
+    this.isDebug = forcedState !== undefined ? Boolean(forcedState) : !this.isDebug;
+    if (this.dom.btnShowDiagnostics) {
+      this.dom.btnShowDiagnostics.classList.toggle('hidden', !this.isDebug);
+    }
+    this.renderBuildingList();
+    this.initNavigationPlanner();
+    this.updateEvacuationExitOptions();
+    if (this.selectedBuildingKey) {
+      this.selectBuilding(this.selectedBuildingKey, false);
+    }
+    if (this.navigationRoutes.length > 0) {
+      const fromB = this.graph.buildings.get(this.dom.navFrom?.value);
+      const toB = this.graph.buildings.get(this.dom.navTo?.value);
+      if (fromB && toB) {
+        this.renderNavigationRoutes(fromB, toB);
+      }
+    }
+    if (this.dom.evacResultCard && !this.dom.evacResultCard.classList.contains('hidden')) {
+      this.displaySelectedEvacuationRoute();
+    }
+    console.log(`[DEBUG MODE] ${this.isDebug ? 'Enabled' : 'Disabled'}`);
   }
 
   clearNavigationRoutes() {

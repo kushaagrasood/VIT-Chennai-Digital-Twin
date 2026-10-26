@@ -479,6 +479,10 @@ export class WayfinderGraph {
     const firstPath = this.findShortestPath(start, goal);
     if (!firstPath) return [];
 
+    if (start === goal) {
+      return [firstPath];
+    }
+
     const accepted = [firstPath];
     const candidates = new Map();
 

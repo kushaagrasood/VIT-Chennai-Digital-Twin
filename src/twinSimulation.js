@@ -24,6 +24,7 @@ export class TwinSimulationEngine {
     this.isLive = options.isLive ?? true;
     this.flowRate = 0; // people per minute (positive = entering, negative = exiting)
     this.lastUpdated = new Date();
+    this.activePreset = null;
 
     // Event listeners for UI updates
     this.subscribers = new Set();
@@ -78,6 +79,7 @@ export class TwinSimulationEngine {
       thresholds: { ...this.thresholds },
       isLive: this.isLive,
       lastUpdated: this.lastUpdated,
+      activePreset: this.activePreset,
       isSimulated: true, // Explicit flag required by specifications
       disclaimer: 'Simulated demo telemetry. Real VIT Chennai deployment requires live IoT door sensors / turnstile feeds.'
     };
@@ -122,12 +124,28 @@ export class TwinSimulationEngine {
   /**
    * Start live simulation loop
    */
+  /**
+   * Start live simulation loop
+   */
   startLiveSimulation() {
     if (this.timer) clearInterval(this.timer);
     this.isLive = true;
     this.timer = setInterval(() => {
       this.tick();
     }, 2500);
+  }
+
+  /**
+   * Reset the auto-tick timer interval so user adjustments (slider/presets)
+   * enjoy a fresh 2.5s window before subsequent natural drift begins.
+   */
+  restartTimer() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = setInterval(() => {
+        this.tick();
+      }, 2500);
+    }
   }
 
   stopLiveSimulation() {
@@ -158,8 +176,12 @@ export class TwinSimulationEngine {
 
     // Soft bounds around capacity
     let nextOccupancy = this.currentOccupancy + delta;
-    if (nextOccupancy < 100) nextOccupancy = 100 + Math.floor(Math.random() * 50);
-    if (nextOccupancy > this.capacity * 1.08) nextOccupancy = Math.floor(this.capacity * 1.05);
+    if (nextOccupancy < 20) {
+      nextOccupancy = 20 + Math.floor(Math.random() * 25);
+    }
+    if (nextOccupancy > this.capacity * 1.08) {
+      nextOccupancy = Math.floor(this.capacity * 1.05) + Math.floor((Math.random() - 0.5) * 30);
+    }
 
     this.currentOccupancy = nextOccupancy;
     this.lastUpdated = new Date();
@@ -171,8 +193,12 @@ export class TwinSimulationEngine {
    */
   setOccupancy(value) {
     this.currentOccupancy = Math.max(0, Number(value) || 0);
+    this.activePreset = null;
     this.flowRate = 0;
     this.lastUpdated = new Date();
+    if (this.isLive) {
+      this.restartTimer();
+    }
     this.notify();
   }
 
@@ -183,6 +209,9 @@ export class TwinSimulationEngine {
     const val = Number(value);
     if (val > 0) {
       this.capacity = val;
+      if (this.isLive) {
+        this.restartTimer();
+      }
       this.notify();
     }
   }
@@ -204,6 +233,7 @@ export class TwinSimulationEngine {
    * Scenario Presets
    */
   applyPreset(scenarioKey) {
+    this.activePreset = scenarioKey;
     switch (scenarioKey) {
       case 'empty':
         this.currentOccupancy = 65;
@@ -221,9 +251,13 @@ export class TwinSimulationEngine {
         this.currentOccupancy = Math.round(this.capacity * 1.06);
         break;
       default:
+        this.activePreset = null;
         break;
     }
     this.lastUpdated = new Date();
+    if (this.isLive) {
+      this.restartTimer();
+    }
     this.notify();
   }
 

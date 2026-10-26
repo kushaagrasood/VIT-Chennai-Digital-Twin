@@ -438,6 +438,28 @@ body {
   background: rgba(0, 212, 255, 0.3);
 }
 
+.card-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.card-btn-row .action-btn-sm {
+  margin-top: 0;
+  flex: 1;
+}
+
+.action-btn-accent {
+  background: rgba(14, 165, 233, 0.2);
+  border-color: rgba(14, 165, 233, 0.6);
+  color: #38bdf8;
+}
+
+.action-btn-accent:hover {
+  background: rgba(14, 165, 233, 0.35);
+  border-color: #38bdf8;
+}
+
 /* 3D Viewport */
 .viewport-section {
   flex: 1;
@@ -774,6 +796,20 @@ body {
 
 .preset-btn.alert-preset:hover {
   background: rgba(239, 68, 68, 0.2);
+}
+
+.preset-btn.active {
+  background: rgba(0, 212, 255, 0.25);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.preset-btn.alert-preset.active {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 /* Threshold Details */
@@ -1147,10 +1183,37 @@ body {
   margin-top: 16px;
 }
 
+.route-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .route-planner-controls label {
   color: #94a3b8;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.btn-swap-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-swap-route:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
 }
 
 .route-planner-controls select {
