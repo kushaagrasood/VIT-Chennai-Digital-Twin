@@ -1,8 +1,10 @@
 /**
  * UI Controller for VIT Chennai Campus AI Digital Twin
  * Manages search, building list, telemetry panels, evacuation controls,
- * modals, and 3D scene synchronizations.
+ * modals, temporal crowd simulation, and 3D scene synchronizations.
  */
+
+import { TemporalCrowdSimulation } from './temporalCrowd.js';
 
 export class UIController {
   constructor({ scene, graph, navView, twinEngine }) {
@@ -10,6 +12,11 @@ export class UIController {
     this.graph = graph;
     this.navView = navView;
     this.twin = twinEngine;
+
+    this.temporalSim = new TemporalCrowdSimulation();
+    this.currentTemporalHour = 13.5;
+    this.isTemporalPlaying = false;
+    this.temporalPlayInterval = null;
 
     this.isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
@@ -122,6 +129,23 @@ export class UIController {
       awsModal: document.getElementById('modal-aws'),
       modalCloseBtns: document.querySelectorAll('.modal-close'),
 
+      // Temporal Crowd Dynamics
+      btnToggleTemporal: document.getElementById('btn-toggle-temporal'),
+      temporalPopover: document.getElementById('temporal-sim-popover'),
+      btnCloseTemporal: document.getElementById('btn-close-temporal'),
+      temporalPresetBtns: document.querySelectorAll('.temporal-preset-btn'),
+      temporalSlider: document.getElementById('temporal-time-slider'),
+      temporalTimeDisplay: document.getElementById('temporal-time-display'),
+      temporalContextText: document.getElementById('temporal-context-text'),
+      temporalValAcademic: document.getElementById('temporal-val-academic'),
+      temporalValCommons: document.getElementById('temporal-val-commons'),
+      temporalValHostel: document.getElementById('temporal-val-hostel'),
+      temporalValSports: document.getElementById('temporal-val-sports'),
+      btnTemporalPlay: document.getElementById('btn-temporal-play'),
+      temporalPlayLabel: document.getElementById('temporal-play-label'),
+      btnTemporalHeatmapToggle: document.getElementById('btn-temporal-heatmap-toggle'),
+      temporalHeatmapLabel: document.getElementById('temporal-heatmap-label'),
+
       // Loading
       loadingOverlay: document.getElementById('loading-overlay'),
       loadingBar: document.getElementById('loading-bar'),
@@ -130,10 +154,12 @@ export class UIController {
     };
 
     this.bindEvents();
+    this.bindTemporalEvents();
     this.renderBuildingList();
     this.initNavigationPlanner();
     this.initEvacuationRoutes();
     this.subscribeTwinEngine();
+    this.applyTemporalHour(13.5, false);
   }
 
   bindEvents() {
@@ -379,6 +405,181 @@ export class UIController {
     this.scene.callbacks.onBuildingClick = (key) => {
       this.selectBuilding(key);
     };
+  }
+
+  bindTemporalEvents() {
+    // 1. Toggle Temporal Popover Button in Header
+    if (this.dom.btnToggleTemporal) {
+      this.dom.btnToggleTemporal.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = this.dom.temporalPopover?.classList.toggle('hidden');
+        this.dom.btnToggleTemporal.classList.toggle('active', !isHidden);
+        if (!isHidden) {
+          // If user opens temporal dynamics, ensure heatmap layer is ON so they can see colors immediately
+          if (!this.scene.heatmapEnabled) {
+            this.scene.setHeatmapEnabled(true);
+            if (this.dom.btnToggleHeatmap) this.dom.btnToggleHeatmap.classList.add('active');
+            if (this.dom.heatmapLegend) this.dom.heatmapLegend.classList.remove('hidden');
+          }
+          this.updateTemporalHeatmapButtonState();
+        }
+      });
+    }
+
+    // 2. Close Popover Button
+    if (this.dom.btnCloseTemporal) {
+      this.dom.btnCloseTemporal.addEventListener('click', () => {
+        this.closeTemporalPopover();
+      });
+    }
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (
+        this.dom.temporalPopover &&
+        !this.dom.temporalPopover.classList.contains('hidden') &&
+        !this.dom.temporalPopover.contains(e.target) &&
+        this.dom.btnToggleTemporal &&
+        !this.dom.btnToggleTemporal.contains(e.target)
+      ) {
+        this.closeTemporalPopover();
+      }
+    });
+
+    // Close on Escape key
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.dom.temporalPopover && !this.dom.temporalPopover.classList.contains('hidden')) {
+        this.closeTemporalPopover();
+      }
+    });
+
+    // 3. Preset Buttons
+    this.dom.temporalPresetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const time = parseFloat(btn.dataset.time);
+        if (!isNaN(time)) {
+          this.applyTemporalHour(time, true);
+        }
+      });
+    });
+
+    // 4. Continuous Time Slider
+    if (this.dom.temporalSlider) {
+      this.dom.temporalSlider.addEventListener('input', (e) => {
+        const time = parseFloat(e.target.value);
+        if (!isNaN(time)) {
+          this.applyTemporalHour(time, false);
+        }
+      });
+    }
+
+    // 5. Play / Pause 24-hour cycle loop
+    if (this.dom.btnTemporalPlay) {
+      this.dom.btnTemporalPlay.addEventListener('click', () => {
+        this.toggleTemporalPlay();
+      });
+    }
+
+    // 6. Direct Heatmap Toggle inside popover
+    if (this.dom.btnTemporalHeatmapToggle) {
+      this.dom.btnTemporalHeatmapToggle.addEventListener('click', () => {
+        const next = !this.scene.heatmapEnabled;
+        this.scene.setHeatmapEnabled(next);
+        if (this.dom.btnToggleHeatmap) this.dom.btnToggleHeatmap.classList.toggle('active', next);
+        if (this.dom.heatmapLegend) this.dom.heatmapLegend.classList.toggle('hidden', !next);
+        this.updateTemporalHeatmapButtonState();
+      });
+    }
+  }
+
+  closeTemporalPopover() {
+    if (this.dom.temporalPopover) {
+      this.dom.temporalPopover.classList.add('hidden');
+    }
+    if (this.dom.btnToggleTemporal) {
+      this.dom.btnToggleTemporal.classList.remove('active');
+    }
+  }
+
+  updateTemporalHeatmapButtonState() {
+    if (this.dom.temporalHeatmapLabel) {
+      this.dom.temporalHeatmapLabel.textContent = this.scene.heatmapEnabled ? 'Heatmap: ON' : 'Heatmap: OFF';
+    }
+    if (this.dom.btnTemporalHeatmapToggle) {
+      this.dom.btnTemporalHeatmapToggle.classList.toggle('action-btn-accent', this.scene.heatmapEnabled);
+    }
+  }
+
+  applyTemporalHour(hour, syncSlider = true) {
+    this.currentTemporalHour = hour;
+
+    if (syncSlider && this.dom.temporalSlider) {
+      this.dom.temporalSlider.value = hour;
+    }
+
+    // Compute densities for all 36 buildings
+    const densities = this.temporalSim.calculateDensitiesForHour(hour);
+
+    // Apply to 3D scene
+    this.scene.setBuildingCrowdDensities(densities);
+
+    // Update displays
+    if (this.dom.temporalTimeDisplay) {
+      this.dom.temporalTimeDisplay.textContent = this.temporalSim.formatHour(hour);
+    }
+    if (this.dom.temporalContextText) {
+      this.dom.temporalContextText.textContent = this.temporalSim.getScheduleDescription(hour);
+    }
+
+    // Update category metric badges
+    const summary = this.temporalSim.getCategorySummary(hour);
+    if (this.dom.temporalValAcademic) this.dom.temporalValAcademic.textContent = `${summary.academic}%`;
+    if (this.dom.temporalValCommons) this.dom.temporalValCommons.textContent = `${summary.commons}%`;
+    if (this.dom.temporalValHostel) this.dom.temporalValHostel.textContent = `${summary.hostel}%`;
+    if (this.dom.temporalValSports) this.dom.temporalValSports.textContent = `${summary.sports}%`;
+
+    // Highlight closest preset
+    this.dom.temporalPresetBtns.forEach(btn => {
+      const pTime = parseFloat(btn.dataset.time);
+      btn.classList.toggle('active', Math.abs(pTime - hour) < 0.3);
+    });
+
+    // Synchronize Auditorium twin if Auditorium is selected
+    if (this.selectedBuildingKey === 'Building024') {
+      const audDensity = densities.get('Building024') || 0.5;
+      const simulatedOcc = Math.round(audDensity * this.twin.capacity);
+      this.twin.setOccupancy(simulatedOcc);
+    }
+  }
+
+  toggleTemporalPlay() {
+    this.isTemporalPlaying = !this.isTemporalPlaying;
+
+    if (this.isTemporalPlaying) {
+      if (this.dom.temporalPlayLabel) this.dom.temporalPlayLabel.textContent = 'Pause 24h Cycle';
+      if (this.dom.btnTemporalPlay) this.dom.btnTemporalPlay.classList.add('active');
+
+      // Ensure heatmap is active while playing timeline
+      if (!this.scene.heatmapEnabled) {
+        this.scene.setHeatmapEnabled(true);
+        if (this.dom.btnToggleHeatmap) this.dom.btnToggleHeatmap.classList.add('active');
+        if (this.dom.heatmapLegend) this.dom.heatmapLegend.classList.remove('hidden');
+        this.updateTemporalHeatmapButtonState();
+      }
+
+      this.temporalPlayInterval = setInterval(() => {
+        let nextHour = this.currentTemporalHour + 0.5;
+        if (nextHour > 23.5) nextHour = 6.0;
+        this.applyTemporalHour(nextHour, true);
+      }, 700);
+    } else {
+      if (this.dom.temporalPlayLabel) this.dom.temporalPlayLabel.textContent = 'Play 24h Cycle';
+      if (this.dom.btnTemporalPlay) this.dom.btnTemporalPlay.classList.remove('active');
+      if (this.temporalPlayInterval) {
+        clearInterval(this.temporalPlayInterval);
+        this.temporalPlayInterval = null;
+      }
+    }
   }
 
   /**
@@ -931,6 +1132,9 @@ export class UIController {
 
   toggleDebugMode(forcedState) {
     this.isDebug = forcedState !== undefined ? Boolean(forcedState) : !this.isDebug;
+    if (this.scene && typeof this.scene.setDebugMode === 'function') {
+      this.scene.setDebugMode(this.isDebug);
+    }
     if (this.dom.btnShowDiagnostics) {
       this.dom.btnShowDiagnostics.classList.toggle('hidden', !this.isDebug);
     }

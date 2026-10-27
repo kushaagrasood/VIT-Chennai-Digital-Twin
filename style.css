@@ -2196,7 +2196,220 @@ body {
 }
 
 /* ========================================================================= */
-/* 13. RESPONSIVE MEDIA QUERIES                                              */
+/* 13. TEMPORAL CROWD DYNAMICS POPOVER                                       */
+/* ========================================================================= */
+.header-tool-btn.active {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: var(--accent-cyan);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.25);
+}
+
+.temporal-popover {
+  position: absolute;
+  top: calc(var(--header-height) + 8px);
+  right: 16px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  background: rgba(10, 15, 29, 0.97);
+  border: 1px solid var(--border-medium);
+  border-radius: 12px;
+  padding: 18px 20px;
+  z-index: 1200;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(0, 212, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: slideDownFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.temporal-popover.hidden {
+  display: none !important;
+}
+
+.temporal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+
+.temporal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.temporal-icon-badge {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-cyan);
+  flex-shrink: 0;
+}
+
+.temporal-title-group h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.temporal-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.temporal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.temporal-description {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.temporal-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+.temporal-presets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.temporal-preset-btn {
+  background: rgba(18, 26, 46, 0.8);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: all 0.18s ease;
+}
+
+.temporal-preset-btn:hover {
+  background: rgba(30, 42, 74, 0.9);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+.temporal-preset-btn.active {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+}
+
+.preset-time-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+}
+
+.preset-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.preset-focus {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.temporal-slider-container {
+  background: rgba(18, 26, 46, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  padding: 0 2px;
+}
+
+.temporal-context-banner {
+  background: rgba(0, 212, 255, 0.08);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #cbd5e1;
+}
+
+.temporal-metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.temporal-metric-card {
+  background: rgba(18, 26, 46, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-title {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.metric-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.temporal-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ========================================================================= */
+/* 14. RESPONSIVE MEDIA QUERIES                                              */
 /* ========================================================================= */
 @media (max-width: 1200px) {
   :root {

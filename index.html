@@ -71,6 +71,11 @@
         <span class="fps-counter" id="fps-counter">60 FPS</span>
       </div> -->
 
+      <button id="btn-toggle-temporal" class="header-tool-btn" title="Simulate Daily Campus Crowd Dynamics">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Crowd Dynamics</span>
+      </button>
+
       <button id="btn-show-diagnostics" class="header-tool-btn hidden" title="Coordinate Alignment & Topological Diagnostics (Ctrl+Shift+D)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
         <span>Diagnostics</span>
@@ -82,6 +87,107 @@
       </button>
     </div>
   </header>
+
+  <!-- Temporal Crowd Dynamics Popover (Hidden by default, triggered via top bar button) -->
+  <div id="temporal-sim-popover" class="temporal-popover hidden" role="dialog" aria-label="Campus Temporal Crowd Dynamics">
+    <div class="temporal-header">
+      <div class="temporal-title-group">
+        <div class="temporal-icon-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <h3>Temporal Crowd Dynamics</h3>
+          <span class="temporal-sub">Simulate schedule-driven crowd migrations</span>
+        </div>
+      </div>
+      <button id="btn-close-temporal" class="btn-card-close" title="Close panel">×</button>
+    </div>
+
+    <div class="temporal-body">
+      <p class="temporal-description">
+        Model dynamic crowd distribution across academic, dining, residential, and athletic time blocks for administrative capacity planning.
+      </p>
+
+      <!-- Scenario Preset Switchers -->
+      <div class="temporal-section-title">SCHEDULE PRESETS</div>
+      <div class="temporal-presets-grid">
+        <button class="temporal-preset-btn" data-time="9.5" type="button">
+          <span class="preset-time-label">09:30 AM</span>
+          <span class="preset-name">🌅 Morning Classes</span>
+          <small class="preset-focus">Academics 90% • Hostels 35%</small>
+        </button>
+        <button class="temporal-preset-btn active" data-time="13.5" type="button">
+          <span class="preset-time-label">01:30 PM</span>
+          <span class="preset-name">☀️ Afternoon Break</span>
+          <small class="preset-focus">North Square 94% • Hostels 18%</small>
+        </button>
+        <button class="temporal-preset-btn" data-time="18.0" type="button">
+          <span class="preset-time-label">06:00 PM</span>
+          <span class="preset-name">🌇 Evening Sports</span>
+          <small class="preset-focus">Recreation 90% • Commons 86%</small>
+        </button>
+        <button class="temporal-preset-btn" data-time="22.5" type="button">
+          <span class="preset-time-label">10:30 PM</span>
+          <span class="preset-name">🌙 Night Curfew</span>
+          <small class="preset-focus">Hostels 92% • Academics 8%</small>
+        </button>
+      </div>
+
+      <!-- Continuous Time Slider -->
+      <div class="temporal-slider-container">
+        <div class="slider-header-row">
+          <label for="temporal-time-slider">Projected Time of Day:</label>
+          <strong id="temporal-time-display" class="mono-text text-cyan">01:30 PM</strong>
+        </div>
+        <input type="range" id="temporal-time-slider" min="6" max="23.5" step="0.25" value="13.5" class="range-slider" />
+        <div class="slider-ticks">
+          <span>06:00</span>
+          <span>09:00</span>
+          <span>12:00</span>
+          <span>15:00</span>
+          <span>18:00</span>
+          <span>21:00</span>
+          <span>23:30</span>
+        </div>
+      </div>
+
+      <div class="temporal-context-banner" id="temporal-context-text">
+        Afternoon Lunch & Break: High concentration at North Square & Gazebo; Hostels low.
+      </div>
+
+      <!-- Live Category Density Readouts -->
+      <div class="temporal-metrics-grid">
+        <div class="temporal-metric-card" id="metric-academic">
+          <span class="metric-title">Academics & Labs</span>
+          <strong class="metric-val mono-text" id="temporal-val-academic">85%</strong>
+        </div>
+        <div class="temporal-metric-card" id="metric-commons">
+          <span class="metric-title">North Square / Gazebo</span>
+          <strong class="metric-val mono-text text-amber" id="temporal-val-commons">94%</strong>
+        </div>
+        <div class="temporal-metric-card" id="metric-hostel">
+          <span class="metric-title">Residential Hostels</span>
+          <strong class="metric-val mono-text" id="temporal-val-hostel">18%</strong>
+        </div>
+        <div class="temporal-metric-card" id="metric-sports">
+          <span class="metric-title">Sports & Grounds</span>
+          <strong class="metric-val mono-text" id="temporal-val-sports">12%</strong>
+        </div>
+      </div>
+
+      <!-- Controls Footer -->
+      <div class="temporal-footer-actions">
+        <button id="btn-temporal-play" class="action-btn-sm" type="button" title="Auto-advance time to demonstrate dynamic crowd shifts">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span id="temporal-play-label">Play 24h Cycle</span>
+        </button>
+        <button id="btn-temporal-heatmap-toggle" class="action-btn-sm action-btn-accent" type="button" title="Ensure 3D heatmap visualizer is active">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></svg>
+          <span id="temporal-heatmap-label">Heatmap: ON</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Technical Context Ribbon (Sub-header) -->
   <div class="tech-sub-bar">

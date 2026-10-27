@@ -151,32 +151,12 @@ async function bootstrap() {
       window.__navView = navView;
 
       
-      // Initialize baseline simulated crowd density across campus buildings
-      const buildingDensities = new Map();
-      const buildingKeys = [...scene.buildingMeshes.keys()];
-
-      buildingKeys.forEach((key, index) => {
-        // Stable, varied demonstration values between 10% and 95%
-        const density = 0.10 + (((index * 37 + 17) % 86) / 100);
-        buildingDensities.set(key, density);
-      });
-
-      // Synchronize auditorium density with the live telemetry state
-      const twinState = twinEngine.getState();
-      const auditoriumDensity = Math.max(
-        0,
-        Math.min(1, twinState.occupancy / twinState.capacity)
-      );
-
-      if (buildingDensities.has('Building024')) {
-        buildingDensities.set('Building024', auditoriumDensity);
-      }
-
-      scene.setBuildingCrowdDensities(buildingDensities);
+      // Initialize baseline simulated crowd density across campus buildings via temporal model
+      ui.applyTemporalHour(ui.currentTemporalHour, true);
       scene.setHeatmapEnabled(false);
 
       if (isDebug) {
-        console.log(`[DEBUG] Hover density initialized for ${buildingDensities.size} buildings.`);
+        console.log(`[DEBUG] Temporal crowd density initialized for ${scene.buildingMeshes.size} buildings.`);
       }
 
 

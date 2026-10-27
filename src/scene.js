@@ -16,6 +16,9 @@ export class CampusScene {
     };
 
     // State
+    this.isDebug = typeof window !== 'undefined' && window.location
+      ? new URLSearchParams(window.location.search).get('debug') === 'true'
+      : false;
     this.buildingMeshes = new Map(); // normalizedKey -> Mesh/Object3D
     this.selectedBuildingMesh = null;
     this.originalMaterials = new Map();
@@ -449,6 +452,10 @@ export class CampusScene {
     this.graph = graph;
   }
 
+  setDebugMode(enabled) {
+    this.isDebug = Boolean(enabled);
+  }
+
   /**
    * Update crowd-density value for an individual building.
    */
@@ -573,7 +580,9 @@ export class CampusScene {
     bar.appendChild(fill);
 
     const note = document.createElement('div');
-    note.textContent = 'Simulated demonstration • Not live IoT sensor data';
+    note.textContent = this.isDebug
+      ? 'Simulated demonstration • Not live IoT sensor data'
+      : 'Simulated demonstration • Campus planning projection';
     note.style.cssText =
       'font-size:10px;color:#94a3b8;margin-top:8px';
 
