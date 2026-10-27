@@ -634,12 +634,12 @@ export class CampusScene {
 
     // 3. Fallback dictionary (resilience guarantee if datasets fail)
     const fallbackBuildingNames = {
-      'Building': 'D1 Block Hostel',
+      'Building': 'D Block Hostel',
       'Building001': 'Academic Block 3',
       'Building002': 'A Block hostel',
       'Building003': 'Academic Block 4',
-      'Building004': 'D2 Block Hostel',
-      'Building005': 'E Block Hostel',
+      'Building004': 'E Block Hostel',
+      'Building005': 'F Block Hostel',
       'Building006': 'Academic Block 2',
       'Building007': 'Academic Block 1',
       'Building008': 'Swimming Pool',

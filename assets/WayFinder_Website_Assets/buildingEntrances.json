@@ -1,6 +1,6 @@
 {
   "Building": {
-    "displayName": "D1 Block Hostel",
+    "displayName": "D Block Hostel",
     "entrances": [
       189
     ]
@@ -24,13 +24,13 @@
     ]
   },
   "Building004": {
-    "displayName": "D2 Block Hostel",
+    "displayName": "E Block Hostel",
     "entrances": [
       189
     ]
   },
   "Building005": {
-    "displayName": "E Block Hostel",
+    "displayName": "F Block Hostel",
     "entrances": [
       68
     ]
