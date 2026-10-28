@@ -8,6 +8,7 @@ export class CampusScene {
     this.graph = options.graph || null;
     this.callbacks = {
       onProgress: options.onProgress || (() => {}),
+      onParsing: options.onParsing || (() => {}),
       onLoaded: options.onLoaded || (() => {}),
       onError: options.onError || (() => {}),
       onBuildingClick: options.onBuildingClick || (() => {}),
@@ -160,6 +161,12 @@ export class CampusScene {
     loader.load(
       glbUrl,
       (gltf) => {
+        if (this.callbacks.onParsing) {
+          this.callbacks.onParsing({
+            phase: 'parsing'
+          });
+        }
+
         this.campusRoot = gltf.scene;
         this.scene.add(this.campusRoot);
 
@@ -177,19 +184,24 @@ export class CampusScene {
         }
       },
       (xhr) => {
-        if (xhr.lengthComputable && xhr.total > 0) {
-          const percent = Math.round((xhr.loaded / xhr.total) * 100);
+        const isComputable = Boolean(xhr.lengthComputable && xhr.total > 0);
+        if (isComputable) {
+          const percent = Math.min(100, Math.round((xhr.loaded / xhr.total) * 100));
           this.callbacks.onProgress({
             loaded: xhr.loaded,
             total: xhr.total,
-            percent
+            percent,
+            lengthComputable: true,
+            phase: xhr.loaded >= xhr.total ? 'processing' : 'downloading'
           });
         } else {
-          // Estimated fallback for chunked transfer
+          // Total is unknown or uncomputable (e.g. chunked transfer or missing Content-Length)
           this.callbacks.onProgress({
             loaded: xhr.loaded,
-            total: 20313904, // 20.3MB vit_map.glb
-            percent: Math.min(99, Math.round((xhr.loaded / 20313904) * 100))
+            total: null,
+            percent: null,
+            lengthComputable: false,
+            phase: 'downloading'
           });
         }
       },

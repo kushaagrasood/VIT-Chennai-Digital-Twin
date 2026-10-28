@@ -150,7 +150,8 @@ export class UIController {
       loadingOverlay: document.getElementById('loading-overlay'),
       loadingBar: document.getElementById('loading-bar'),
       loadingText: document.getElementById('loading-text'),
-      loadingPercent: document.getElementById('loading-percent')
+      loadingPercent: document.getElementById('loading-percent'),
+      loadingSub: document.getElementById('loading-sub')
     };
 
     this.bindEvents();
@@ -1191,11 +1192,11 @@ export class UIController {
     const exits = [
       {
         id: '111',
-        label: this.isDebug ? 'Main Gate — Entrance 1 (WP 111)' : 'Main Gate — Entrance 1'
+        label: this.isDebug ? 'Main Gate - Entrance 1 (WP 111)' : 'Main Gate - Entrance 1'
       },
       {
         id: '188',
-        label: this.isDebug ? 'Main Gate — Entrance 2 (WP 188)' : 'Main Gate — Entrance 2'
+        label: this.isDebug ? 'Main Gate - Entrance 2 (WP 188)' : 'Main Gate - Entrance 2'
       },
       {
         id: '33',
@@ -1382,17 +1383,31 @@ export class UIController {
     });
   }
 
-  updateLoading(percent, statusText) {
+  updateLoading(percent, statusText, indeterminate = false, subText = null) {
     if (this.dom.loadingBar) {
-      this.dom.loadingBar.style.width = `${percent}%`;
+      if (indeterminate) {
+        this.dom.loadingBar.classList.add('indeterminate');
+        this.dom.loadingBar.style.width = '100%';
+      } else {
+        this.dom.loadingBar.classList.remove('indeterminate');
+        const safe = Math.max(0, Math.min(100, Number(percent) || 0));
+        this.dom.loadingBar.style.width = `${safe}%`;
+      }
     }
     if (this.dom.loadingPercent) {
-      this.dom.loadingPercent.textContent = `${percent}%`;
+      if (indeterminate) {
+        this.dom.loadingPercent.textContent = '...';
+      } else if (percent !== null && percent !== undefined) {
+        this.dom.loadingPercent.textContent = `${Math.round(percent)}%`;
+      }
     }
     if (this.dom.loadingText && statusText) {
       this.dom.loadingText.textContent = statusText;
     }
-    if (percent >= 100) {
+    if (this.dom.loadingSub && subText) {
+      this.dom.loadingSub.textContent = subText;
+    }
+    if (!indeterminate && percent !== null && percent >= 100) {
       setTimeout(() => {
         if (this.dom.loadingOverlay) {
           this.dom.loadingOverlay.classList.add('fade-out');

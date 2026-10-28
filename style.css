@@ -194,6 +194,23 @@ body {
   box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
 }
 
+.loading-bar-fill.indeterminate {
+  width: 100% !important;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.15), #00d4ff, #38bdf8, rgba(0, 212, 255, 0.15));
+  background-size: 200% 100%;
+  animation: loading-bar-indeterminate 1.4s ease-in-out infinite;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.6);
+}
+
+@keyframes loading-bar-indeterminate {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -180% 0;
+  }
+}
+
 .loading-footer {
   display: flex;
   justify-content: space-between;
@@ -2452,5 +2469,24 @@ body {
   
   .floating-hud {
     bottom: 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .loading-content {
+    width: 92%;
+    padding: 24px 18px;
+    border-radius: 12px;
+  }
+  .loading-logo h1 {
+    font-size: 1rem;
+    letter-spacing: 0.03em;
+  }
+  .loading-text {
+    font-size: 0.76rem;
+    margin-bottom: 12px;
+  }
+  .loading-footer {
+    font-size: 0.7rem;
   }
 }

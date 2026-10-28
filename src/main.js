@@ -8,9 +8,59 @@ async function bootstrap() {
   const canvasContainer = document.getElementById('canvas-container');
   const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
+  // Helper to reliably update the loading screen DOM from anywhere in the lifecycle
+  function updateLoadingScreen({ percent, statusText, indeterminate = false, subText = null }) {
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingPercent = document.getElementById('loading-percent');
+    const loadingText = document.getElementById('loading-text');
+    const loadingSub = document.getElementById('loading-sub');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    if (loadingBar) {
+      if (indeterminate) {
+        loadingBar.classList.add('indeterminate');
+        loadingBar.style.width = '100%';
+      } else {
+        loadingBar.classList.remove('indeterminate');
+        const safe = Math.max(0, Math.min(100, Number(percent) || 0));
+        loadingBar.style.width = `${safe}%`;
+      }
+    }
+
+    if (loadingPercent) {
+      if (indeterminate) {
+        loadingPercent.textContent = '...';
+      } else if (percent !== null && percent !== undefined) {
+        loadingPercent.textContent = `${Math.round(percent)}%`;
+      }
+    }
+
+    if (loadingText && statusText) {
+      loadingText.textContent = statusText;
+    }
+
+    if (loadingSub && subText) {
+      loadingSub.textContent = subText;
+    }
+
+    if (!indeterminate && percent !== null && percent >= 100) {
+      setTimeout(() => {
+        if (loadingOverlay) {
+          loadingOverlay.classList.add('fade-out');
+          setTimeout(() => loadingOverlay.remove(), 600);
+        }
+      }, 400);
+    }
+  }
+
   // 1. Initialize Wayfinder Graph
   const graph = new WayfinderGraph();
   let scene = null;
+
+  updateLoadingScreen({
+    percent: 5,
+    statusText: 'Loading campus topology datasets...'
+  });
 
   // 2. Fetch and parse Wayfinder datasets with resilient fallback
   let dataLoaded = false;
@@ -96,6 +146,11 @@ async function bootstrap() {
     }
   }
 
+  updateLoadingScreen({
+    percent: 15,
+    statusText: 'Connecting to 3D campus model repository...'
+  });
+
   // 3. Initialize Twin Simulation Engine for Mahatma Gandhi Auditorium (Building024)
   const twinEngine = new TwinSimulationEngine({
     capacity: 2400,
@@ -113,11 +168,51 @@ async function bootstrap() {
     graph,
     getBuildingDisplayName: (key) => graph.buildings.get(key)?.displayName,
     onProgress: (p) => {
+      if (p.lengthComputable && p.total && p.total > 0) {
+        // Deterministic byte progress (e.g. Content-Length present)
+        const downloadFraction = Math.min(1, p.loaded / p.total);
+        // Map 0-100% of download to 15% - 88% overall progress (reserving 88-100% for parsing and setup)
+        const displayPercent = Math.min(88, Math.round(15 + downloadFraction * 73));
+        const loadedMb = (p.loaded / (1024 * 1024)).toFixed(1);
+        const totalMb = (p.total / (1024 * 1024)).toFixed(1);
+        const downloadPct = Math.round(downloadFraction * 100);
+
+        updateLoadingScreen({
+          percent: displayPercent,
+          statusText: `Downloading 3D Campus Geometry (${loadedMb} MB / ${totalMb} MB • ${downloadPct}%)...`,
+          indeterminate: false,
+          subText: `${loadedMb} / ${totalMb} MB (${downloadPct}%) • 1:1 Metric Coordinate Frame`
+        });
+      } else {
+        // Indeterminate progress (e.g. chunked transfer or unknown total length)
+        const loadedMb = (p.loaded / (1024 * 1024)).toFixed(1);
+        updateLoadingScreen({
+          percent: null,
+          statusText: `Downloading 3D Campus Geometry (${loadedMb} MB downloaded)...`,
+          indeterminate: true,
+          subText: `${loadedMb} MB received • S3 Static Website Storage`
+        });
+      }
+
       if (ui) {
         ui.updateLoading(
-          Math.min(95, Math.round(p.percent * 0.95)),
-          `Loading 3D Campus Geometry (${(p.loaded / (1024 * 1024)).toFixed(1)} MB / 20.3 MB)...`
+          p.lengthComputable ? Math.round(15 + (p.loaded / p.total) * 73) : null,
+          p.lengthComputable
+            ? `Downloading 3D Campus Geometry (${(p.loaded / 1048576).toFixed(1)} MB / ${(p.total / 1048576).toFixed(1)} MB)...`
+            : `Downloading 3D Campus Geometry (${(p.loaded / 1048576).toFixed(1)} MB downloaded)...`,
+          !p.lengthComputable
         );
+      }
+    },
+    onParsing: () => {
+      updateLoadingScreen({
+        percent: 92,
+        statusText: 'Parsing & Indexing 3D Campus Meshes...',
+        indeterminate: false,
+        subText: 'Processing geometry buffers & material nodes'
+      });
+      if (ui) {
+        ui.updateLoading(92, 'Parsing & Indexing 3D Campus Meshes...');
       }
     },
     onLoaded: ({ buildingsFound }) => {
@@ -162,13 +257,26 @@ async function bootstrap() {
 
       // Finish loading bar and select Auditorium WITHOUT moving the camera,
       // preserving the initial full-campus framed overview
+      updateLoadingScreen({
+        percent: 100,
+        statusText: 'Campus 3D Twin Ready!',
+        indeterminate: false,
+        subText: `${buildingsFound} building structures initialized`
+      });
       ui.updateLoading(100, 'Campus 3D Twin Ready!');
+
       setTimeout(() => {
         ui.selectBuilding('Building024', false);
       }, 500);
     },
     onError: (err) => {
       console.error('Error loading campus GLB:', err);
+      const loadingBar = document.getElementById('loading-bar');
+      if (loadingBar) {
+        loadingBar.classList.remove('indeterminate');
+        loadingBar.style.width = '100%';
+        loadingBar.style.background = '#ef4444';
+      }
       const loadingText = document.getElementById('loading-text');
       const loadingOverlay = document.getElementById('loading-overlay');
       if (loadingText) {
