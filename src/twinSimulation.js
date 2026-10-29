@@ -2,6 +2,12 @@
  * Mahatma Gandhi Auditorium Digital Twin Telemetry & Simulation Engine
  * Simulates real-time occupancy, dynamic fluctuation, threshold evaluation,
  * and emergency egress calculation for Building024 (Entrance WP 199).
+ *
+ * Stage 1 Cloud Architecture:
+ * - When configured with an API Gateway endpoint, polls AWS DynamoDB for hot state.
+ * - When user modifies slider or scenario presets, dispatches a debounced POST to /telemetry.
+ * - Gracefully falls back to deterministic local random-walk simulation when API is unreachable.
+ * - Local auto-tick and cloud polling are mutually exclusive to prevent state race conditions.
  */
 
 export class TwinSimulationEngine {
@@ -25,6 +31,13 @@ export class TwinSimulationEngine {
     this.flowRate = 0; // people per minute (positive = entering, negative = exiting)
     this.lastUpdated = new Date();
     this.activePreset = null;
+
+    // Cloud connection configuration
+    this.apiEndpoint = options.apiEndpoint ? options.apiEndpoint.replace(/\/+$/, '') : null;
+    this.connectionMode = this.apiEndpoint ? 'connecting' : 'local'; // 'local' | 'connecting' | 'cloud'
+    this.cloudPollTimer = null;
+    this.postDebounceTimer = null;
+    this.consecutiveFailures = 0;
 
     // Event listeners for UI updates
     this.subscribers = new Set();
@@ -64,6 +77,13 @@ export class TwinSimulationEngine {
     const utilization = Math.round((occupancy / this.capacity) * 1000) / 10;
     const status = this.evaluateStatus(utilization);
 
+    let cloudStatusLabel = 'LOCAL SIMULATION (OFFLINE DEMO)';
+    if (this.connectionMode === 'cloud') {
+      cloudStatusLabel = 'AWS SERVERLESS BUS (ONLINE)';
+    } else if (this.connectionMode === 'connecting') {
+      cloudStatusLabel = 'CONNECTING TO AWS BUS...';
+    }
+
     return {
       buildingKey: this.buildingKey,
       buildingName: this.buildingName,
@@ -81,7 +101,10 @@ export class TwinSimulationEngine {
       lastUpdated: this.lastUpdated,
       activePreset: this.activePreset,
       isSimulated: true, // Explicit flag required by specifications
-      disclaimer: 'Simulated demo telemetry. Real VIT Chennai deployment requires live IoT door sensors / turnstile feeds.'
+      disclaimer: 'Simulated demo telemetry. Real VIT Chennai deployment requires live IoT door sensors / turnstile feeds.',
+      connectionMode: this.connectionMode,
+      apiEndpoint: this.apiEndpoint,
+      cloudStatusLabel
     };
   }
 
@@ -122,22 +145,106 @@ export class TwinSimulationEngine {
   }
 
   /**
-   * Start live simulation loop
-   */
-  /**
-   * Start live simulation loop
+   * Start live simulation or polling loop
    */
   startLiveSimulation() {
-    if (this.timer) clearInterval(this.timer);
     this.isLive = true;
+    if (this.apiEndpoint) {
+      this.startCloudPolling();
+    } else {
+      this.startLocalTimer();
+    }
+  }
+
+  startLocalTimer() {
+    if (this.timer) clearInterval(this.timer);
     this.timer = setInterval(() => {
       this.tick();
     }, 2500);
   }
 
+  startCloudPolling() {
+    if (this.cloudPollTimer) clearInterval(this.cloudPollTimer);
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    this.fetchCloudLatest();
+    this.cloudPollTimer = setInterval(() => {
+      this.fetchCloudLatest();
+    }, 5000);
+  }
+
   /**
-   * Reset the auto-tick timer interval so user adjustments (slider/presets)
-   * enjoy a fresh 2.5s window before subsequent natural drift begins.
+   * Poll latest telemetry from AWS API Gateway
+   */
+  async fetchCloudLatest() {
+    if (!this.apiEndpoint) return;
+    try {
+      const res = await fetch(`${this.apiEndpoint}/telemetry/latest?venueId=${this.buildingKey}`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.occupancy === 'number') {
+          this.currentOccupancy = data.occupancy;
+          this.flowRate = typeof data.flowRate === 'number' ? data.flowRate : 0;
+          this.lastUpdated = data.updatedAt ? new Date(data.updatedAt) : new Date();
+          this.connectionMode = 'cloud';
+          this.consecutiveFailures = 0;
+          this.notify();
+          return;
+        }
+      }
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      this.consecutiveFailures++;
+      if (this.consecutiveFailures >= 3 && this.connectionMode !== 'local') {
+        console.warn('API Gateway telemetry polling failed 3 times; falling back to local simulation:', err.message);
+        this.connectionMode = 'local';
+        if (this.isLive && !this.timer) {
+          this.startLocalTimer();
+        }
+        this.notify();
+      }
+    }
+  }
+
+  /**
+   * Push state to AWS API Gateway with debouncing to prevent flood
+   */
+  pushCloudState(occupancy) {
+    if (!this.apiEndpoint || this.connectionMode !== 'cloud') return;
+    if (this.postDebounceTimer) clearTimeout(this.postDebounceTimer);
+
+    this.postDebounceTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${this.apiEndpoint}/telemetry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            venueId: this.buildingKey,
+            occupancy: Math.round(occupancy),
+            flowDelta: this.flowRate,
+            sensorSource: 'UI_SLIDER'
+          }),
+          signal: AbortSignal.timeout(4000)
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.data?.updatedAt) {
+            this.lastUpdated = new Date(resData.data.updatedAt);
+          }
+          this.notify();
+        }
+      } catch (err) {
+        console.warn('Cloud telemetry push error:', err);
+      }
+    }, 400);
+  }
+
+  /**
+   * Reset local timer on user interaction
    */
   restartTimer() {
     if (this.timer) {
@@ -153,6 +260,10 @@ export class TwinSimulationEngine {
       clearInterval(this.timer);
       this.timer = null;
     }
+    if (this.cloudPollTimer) {
+      clearInterval(this.cloudPollTimer);
+      this.cloudPollTimer = null;
+    }
     this.isLive = false;
     this.flowRate = 0;
     this.notify();
@@ -167,7 +278,7 @@ export class TwinSimulationEngine {
   }
 
   /**
-   * Advance simulation time step with realistic pedestrian drift
+   * Advance simulation time step with realistic pedestrian drift (Local Mode Only)
    */
   tick() {
     // Generate realistic fluctuating pedestrian flow (-18 to +22 people)
@@ -196,7 +307,9 @@ export class TwinSimulationEngine {
     this.activePreset = null;
     this.flowRate = 0;
     this.lastUpdated = new Date();
-    if (this.isLive) {
+    if (this.connectionMode === 'cloud') {
+      this.pushCloudState(this.currentOccupancy);
+    } else if (this.isLive) {
       this.restartTimer();
     }
     this.notify();
@@ -209,7 +322,7 @@ export class TwinSimulationEngine {
     const val = Number(value);
     if (val > 0) {
       this.capacity = val;
-      if (this.isLive) {
+      if (this.connectionMode === 'local' && this.isLive) {
         this.restartTimer();
       }
       this.notify();
@@ -255,7 +368,9 @@ export class TwinSimulationEngine {
         break;
     }
     this.lastUpdated = new Date();
-    if (this.isLive) {
+    if (this.connectionMode === 'cloud') {
+      this.pushCloudState(this.currentOccupancy);
+    } else if (this.isLive) {
       this.restartTimer();
     }
     this.notify();
@@ -263,7 +378,6 @@ export class TwinSimulationEngine {
 
   /**
    * Compute theoretical evacuation time for the current occupancy
-   * Note: Explicit disclaimer provided with calculation!
    */
   calculateEvacuationMetrics(routeDistanceMeters) {
     const walkingSpeedMps = 1.2; // nominal walking speed 1.2 m/s

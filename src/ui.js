@@ -84,6 +84,7 @@ export class UIController {
       statusBadge: document.getElementById('twin-status-badge'),
       flowRateValue: document.getElementById('twin-flow-rate'),
       lastUpdatedValue: document.getElementById('twin-last-updated'),
+      twinBusChip: document.getElementById('twin-bus-chip'),
       simLiveToggle: document.getElementById('twin-sim-toggle'),
       occupancySlider: document.getElementById('twin-occ-slider'),
       occupancyInput: document.getElementById('twin-occ-input'),
@@ -868,14 +869,22 @@ export class UIController {
         this.dom.flowRateValue.textContent = `${sign}${state.flowRate} /min`;
       }
 
-      // 5. Last updated time
+      // 5. Last updated time & Bus Connection Status
       if (this.dom.lastUpdatedValue) {
         this.dom.lastUpdatedValue.textContent = state.lastUpdated.toLocaleTimeString();
+      }
+      if (this.dom.twinBusChip) {
+        this.dom.twinBusChip.textContent = state.cloudStatusLabel || 'LOCAL SIMULATION';
+        this.dom.twinBusChip.className = `telemetry-bus-chip ${state.connectionMode || 'local'}`;
       }
 
       // 6. Live button state
       if (this.dom.simLiveToggle) {
-        this.dom.simLiveToggle.textContent = state.isLive ? 'Pause Auto-Tick' : 'Resume Auto-Tick';
+        if (state.connectionMode === 'cloud') {
+          this.dom.simLiveToggle.textContent = state.isLive ? 'Pause Cloud Polling' : 'Resume Cloud Polling';
+        } else {
+          this.dom.simLiveToggle.textContent = state.isLive ? 'Pause Auto-Tick' : 'Resume Auto-Tick';
+        }
         this.dom.simLiveToggle.classList.toggle('active', state.isLive);
       }
 

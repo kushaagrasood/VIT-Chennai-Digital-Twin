@@ -12,4 +12,8 @@ Thumbs.db
 AI_notes/
 SESSION_NOTES.md
 scratch/
-scratch/
+certs/
+*.pem
+*.crt
+*.key
+*debug.txt

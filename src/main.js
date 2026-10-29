@@ -151,13 +151,43 @@ async function bootstrap() {
     statusText: 'Connecting to 3D campus model repository...'
   });
 
-  // 3. Initialize Twin Simulation Engine for Mahatma Gandhi Auditorium (Building024)
+  // 3. Resolve API Gateway Endpoint (via query parameter, window.__VIT_CONFIG__, or /config.json)
+  let apiEndpoint = null;
+  const urlParamApi = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('api') : null;
+
+  if (urlParamApi && urlParamApi.trim()) {
+    apiEndpoint = urlParamApi.trim();
+    console.log(`[VIT Digital Twin] Using API endpoint from URL query: ${apiEndpoint}`);
+  } else if (window.__VIT_CONFIG__?.apiUrl && window.__VIT_CONFIG__.apiUrl.trim()) {
+    apiEndpoint = window.__VIT_CONFIG__.apiUrl.trim();
+    console.log(`[VIT Digital Twin] Using API endpoint from window.__VIT_CONFIG__: ${apiEndpoint}`);
+  } else {
+    try {
+      const cfgRes = await fetch('/config.json', { cache: 'no-store' });
+      if (cfgRes.ok) {
+        const cfg = await cfgRes.json();
+        if (cfg && cfg.apiUrl && typeof cfg.apiUrl === 'string' && cfg.apiUrl.trim()) {
+          apiEndpoint = cfg.apiUrl.trim();
+          console.log(`[VIT Digital Twin] Using API endpoint from /config.json: ${apiEndpoint}`);
+        }
+      }
+    } catch {
+      // Local or offline mode
+    }
+  }
+
+  if (!apiEndpoint) {
+    console.log('[VIT Digital Twin] No live API Gateway endpoint configured. Running in Local Simulation Mode.');
+  }
+
+  // Initialize Twin Simulation Engine for Mahatma Gandhi Auditorium (Building024)
   const twinEngine = new TwinSimulationEngine({
     capacity: 2400,
     moderateThreshold: 50,
     highThreshold: 80,
     initialOccupancy: 1480,
-    isLive: true
+    isLive: true,
+    apiEndpoint
   });
 
   // 4. Initialize Three.js 3D Campus Scene
