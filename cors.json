@@ -1,0 +1,10 @@
+{
+  "AllowOrigins": [
+    "https://d457wl1fwy7gg.cloudfront.net",
+    "http://localhost:5173",
+    "http://localhost:4173"
+  ],
+  "AllowMethods": ["GET", "POST", "OPTIONS"],
+  "AllowHeaders": ["content-type", "x-simulation-token"],
+  "MaxAge": 86400
+}

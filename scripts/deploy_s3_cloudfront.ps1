@@ -42,6 +42,17 @@ if (-not ($DistributionId -match '^[A-Z0-9]+$')) {
 $Profile = $Profile.Trim()
 $Region = $Region.Trim()
 
+function Invoke-Native {
+    param([scriptblock]$Script)
+    $prev = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Script
+    } finally {
+        $ErrorActionPreference = $prev
+    }
+}
+
 # Helper to execute AWS CLI commands and ensure non-zero exit codes immediately abort
 function Invoke-AwsCommand {
     param(
@@ -64,7 +75,7 @@ Write-Host "====================================================================
 
 # 0. Pre-flight Check: Verify AWS CLI profile credentials without exposing secrets
 Write-Host "Verifying AWS CLI profile '$Profile'..." -ForegroundColor Yellow
-$callerArn = aws sts get-caller-identity --profile $Profile --query "Arn" --output text
+$callerArn = Invoke-Native { aws sts get-caller-identity --profile $Profile --query "Arn" --output text 2>$null }
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($callerArn)) {
     Write-Error "Error: AWS CLI profile '$Profile' is not available or authentication failed. Check 'aws configure --profile $Profile'."
     exit 1
@@ -155,3 +166,5 @@ Write-Host "`n==================================================================
 Write-Host "Deployment complete! Live HTTPS Digital Twin:" -ForegroundColor Green
 Write-Host "https://$domain" -ForegroundColor Cyan
 Write-Host "==============================================================================" -ForegroundColor Green
+$global:LASTEXITCODE = 0
+exit 0

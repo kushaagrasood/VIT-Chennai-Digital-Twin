@@ -1,0 +1,14 @@
+{
+  "name": "vit-telemetry-lambda",
+  "version": "1.0.0",
+  "description": "Serverless Telemetry Ingestion Handler for VIT Chennai AI Digital Twin",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0"
+  }
+}
