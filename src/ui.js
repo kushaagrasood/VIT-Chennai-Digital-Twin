@@ -385,7 +385,11 @@ export class UIController {
     }
     if (this.dom.btnShowAws) {
       this.dom.btnShowAws.addEventListener('click', () => {
-        this.dom.awsModal.classList.remove('hidden');
+        if (this.dom.awsModal) {
+          this.dom.awsModal.classList.remove('hidden');
+          const body = this.dom.awsModal.querySelector('.modal-body');
+          if (body) body.scrollTop = 0;
+        }
       });
     }
     this.dom.modalCloseBtns.forEach(btn => {
@@ -395,8 +399,27 @@ export class UIController {
       });
     });
 
-    // Keyboard shortcut (Ctrl+Shift+D or Cmd+Shift+D) to toggle debug mode
+    // Close modals on clicking overlay backdrop outside the modal-card
+    [this.dom.diagnosticsModal, this.dom.awsModal].forEach(modal => {
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            modal.classList.add('hidden');
+          }
+        });
+      }
+    });
+
+    // Keyboard shortcuts: Escape to dismiss modals, Ctrl+Shift+D for debug mode
     window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (this.dom.diagnosticsModal && !this.dom.diagnosticsModal.classList.contains('hidden')) {
+          this.dom.diagnosticsModal.classList.add('hidden');
+        }
+        if (this.dom.awsModal && !this.dom.awsModal.classList.contains('hidden')) {
+          this.dom.awsModal.classList.add('hidden');
+        }
+      }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
         e.preventDefault();
         this.toggleDebugMode();

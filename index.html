@@ -770,62 +770,420 @@
     </div>
   </div>
 
-  <!-- AWS Cloud Architecture Modal -->
-  <div id="modal-aws" class="modal-overlay hidden">
+  <!-- Deployed AWS Cloud Architecture Modal -->
+  <div id="modal-aws" class="modal-overlay hidden" role="dialog" aria-labelledby="modal-aws-title" aria-modal="true">
     <div class="modal-card modal-lg">
       <div class="modal-header">
         <div class="modal-title-row">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-          <h3>Enterprise AWS Cloud Architecture Blueprint</h3>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+          <div>
+            <h3 id="modal-aws-title">Deployed AWS Cloud Architecture</h3>
+            <p class="modal-subtitle">Verified architecture of the VIT Chennai Campus Digital Twin demonstration.</p>
+          </div>
         </div>
         <button class="modal-close" aria-label="Close modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="modal-intro">
-          Conceptual blueprint outlining how this local WebGL Digital Twin prototype scales into an enterprise-grade AWS cloud-backed production system.
-        </p>
 
-        <div class="aws-pipeline-diagram">
-          <div class="aws-step">
-            <div class="step-num">1</div>
-            <h4>Edge Ingestion</h4>
-            <p>Campus turnstiles & optical door sensors publish telemetry via MQTT over mTLS.</p>
-            <span class="aws-badge">AWS IoT Core</span>
+        <!-- Live Verified Identifiers Bar -->
+        <div class="aws-meta-bar">
+          <div class="aws-meta-item">
+            <span class="meta-label">AWS Account:</span>
+            <span class="meta-val">672791231004</span>
           </div>
-          <div class="aws-arrow">➔</div>
-          <div class="aws-step">
-            <div class="step-num">2</div>
-            <h4>Stream Processing</h4>
-            <p>Ingests real-time ingress/egress events with sub-second buffering & fan-out.</p>
-            <span class="aws-badge">Amazon Kinesis</span>
+          <div class="aws-meta-item">
+            <span class="meta-label">Region:</span>
+            <span class="meta-val">ap-south-1 (Mumbai)</span>
           </div>
-          <div class="aws-arrow">➔</div>
-          <div class="aws-step">
-            <div class="step-num">3</div>
-            <h4>Serverless Compute</h4>
-            <p>Validates venue thresholds, computes moving averages & triggers alerts.</p>
-            <span class="aws-badge">AWS Lambda</span>
+          <div class="aws-meta-item">
+            <span class="meta-label">CloudFront CDN:</span>
+            <span class="meta-val">d457wl1fwy7gg.cloudfront.net</span>
           </div>
-          <div class="aws-arrow">➔</div>
-          <div class="aws-step">
-            <div class="step-num">4</div>
-            <h4>Dual Storage</h4>
-            <p>DynamoDB retains hot state; Timestream stores historical trends.</p>
-            <span class="aws-badge">DynamoDB + Timestream</span>
+          <div class="aws-meta-item">
+            <span class="meta-label">API Gateway:</span>
+            <span class="meta-val">8iu3rqh0cj.execute-api</span>
           </div>
-          <div class="aws-arrow">➔</div>
-          <div class="aws-step">
-            <div class="step-num">5</div>
-            <h4>Client Distribution</h4>
-            <p>API Gateway WebSocket pushes real-time telemetry to WebGL clients.</p>
-            <span class="aws-badge">API Gateway + CloudFront</span>
+          <div class="aws-meta-item">
+            <span class="meta-label">DynamoDB:</span>
+            <span class="meta-val">vit-campus-telemetry</span>
+          </div>
+          <div class="aws-meta-item">
+            <span class="meta-label">Lambda Runtime:</span>
+            <span class="meta-val">Node.js 22.x (arm64)</span>
           </div>
         </div>
 
-        <div class="aws-notes-box">
-          <strong>Academic Implementation Note:</strong>
-          <p>The current application runs as a self-contained local digital twin. All sensor data is algorithmically simulated to demonstrate how cloud-backed spatial twins operate prior to physical IoT turnstile deployment at VIT Chennai.</p>
+        <!-- Flow Paths Legend -->
+        <div class="aws-legend-bar">
+          <span class="legend-chip chip-cdn"><span class="legend-dot"></span> Static CDN Delivery</span>
+          <span class="legend-chip chip-iot"><span class="legend-dot"></span> Path B: Edge IoT Ingestion (MQTT)</span>
+          <span class="legend-chip chip-api"><span class="legend-dot"></span> Path A &amp; Polling (HTTP API)</span>
+          <span class="legend-chip chip-obs"><span class="legend-dot"></span> Observability Branch (CloudWatch)</span>
         </div>
+
+        <!-- Multi-Track Architectural Data Flow Diagram -->
+        <div class="aws-tracks-container">
+
+          <!-- Track 1: Static CDN Delivery -->
+          <div class="aws-track track-cdn">
+            <div class="track-header">
+              <span class="track-badge badge-cdn">Frontend Delivery</span>
+              <span class="track-title">Static Website &amp; 3D Campus Model Hosting</span>
+              <span class="track-protocol">HTTPS / TLS 1.3</span>
+            </div>
+            <div class="track-flow">
+              <div class="flow-node">
+                <span class="node-badge">S3 Origin</span>
+                <h5>Amazon S3 Bucket</h5>
+                <p>Private bucket <code>vit-chennai-digital-twin-672791231004</code> storing 20.3 MB 3D model (<code>vit_map.glb</code>), datasets &amp; Vite bundle.</p>
+                <span class="node-tag">Block Public Access</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Origin Access Control (OAC)</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Edge CDN</span>
+                <h5>Amazon CloudFront</h5>
+                <p>Distribution <code>E2NGCY20SE2WWQ</code> caching assets globally with gzip/brotli &amp; 1-year immutable asset headers.</p>
+                <span class="node-tag">d457wl1fwy7gg.cloudfront.net</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">HTTPS Delivery</span>
+              </div>
+              <div class="flow-node node-client">
+                <span class="node-badge">Client Viewport</span>
+                <h5>User Web Browser</h5>
+                <p>Three.js WebGL spatial engine rendering 36 campus structures, 278 waypoints &amp; 606 road graph edges.</p>
+                <span class="node-tag">1:1 Metric Space</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Track 2: IoT Telemetry Ingestion (Path B) -->
+          <div class="aws-track track-iot">
+            <div class="track-header">
+              <span class="track-badge badge-iot">Path B: IoT Ingestion</span>
+              <span class="track-title">Automated Turnstile Sensor Telemetry Pipeline</span>
+              <span class="track-protocol">MQTT over TLS 1.2</span>
+            </div>
+            <div class="track-flow">
+              <div class="flow-node">
+                <span class="node-badge">Edge Script</span>
+                <h5>PowerShell Simulator</h5>
+                <p><code>scripts/demo.ps1</code> &amp; <code>publish_sensor_sim.ps1</code> generating synthetic venue readings.</p>
+                <span class="node-tag">IOT_MQTT_TURNSTILE</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">MQTT (TLS 1.2)</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Broker</span>
+                <h5>AWS IoT Core</h5>
+                <p>Accepts telemetry on ATS data endpoint on topic <code>vit/campus/Building024/telemetry</code>.</p>
+                <span class="node-tag">Port 8883 / 443</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Rule Match</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Rules Engine</span>
+                <h5>IoT Topic Rule</h5>
+                <p>Rule <code>vit_campus_telemetry_rule</code> evaluating <code>SELECT * FROM 'vit/campus/Building024/telemetry'</code>.</p>
+                <span class="node-tag">Serverless Router</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Direct Invoke</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Compute</span>
+                <h5>AWS Lambda</h5>
+                <p><code>vit-telemetry-handler</code> validates schema, derives 89.6% utilization &amp; assigns <code>HIGH</code> status.</p>
+                <span class="node-tag">Node.js 22.x (arm64)</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Atomic Write</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">NoSQL Storage</span>
+                <h5>Amazon DynamoDB</h5>
+                <p>Table <code>vit-campus-telemetry</code> atomically updates <code>LATEST</code> hot state and appends <code>TS#...</code> history.</p>
+                <span class="node-tag">Atomic Persistence</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Track 3: HTTP API & Client State (Path A & Polling) -->
+          <div class="aws-track track-api">
+            <div class="track-header">
+              <span class="track-badge badge-api">Path A &amp; Polling</span>
+              <span class="track-title">HTTP API Backend &amp; Client State Synchronization</span>
+              <span class="track-protocol">HTTPS REST API</span>
+            </div>
+            <div class="track-flow">
+              <div class="flow-node node-client">
+                <span class="node-badge">UI Telemetry</span>
+                <h5>Slider &amp; Presets</h5>
+                <p>User adjusts occupancy slider or applies scenario presets (Empty, Cultural, Overcapacity).</p>
+                <span class="node-tag">Debounced 400ms</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">POST /telemetry</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">HTTP API v2</span>
+                <h5>Amazon API Gateway</h5>
+                <p><code>vit-telemetry-api</code> (<code>8iu3rqh0cj</code>) enforcing CORS &amp; stage throttling: 10 req/s, burst 20.</p>
+                <span class="node-tag">Rate-Limited Ingress</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Proxy Route</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Compute</span>
+                <h5>AWS Lambda</h5>
+                <p>Calculates status, enforces server-authoritative capacity &amp; writes atomically to DynamoDB.</p>
+                <span class="node-tag">Authoritative Logic</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">↔</span>
+                <span class="arrow-label">GetItem</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">State Sync</span>
+                <h5>DynamoDB LATEST</h5>
+                <p>Polled by web client every 5s via <code>GET /telemetry/latest?venueId=Building024</code> to refresh 3D twin.</p>
+                <span class="node-tag">5s Polling Cycle</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Track 4: CloudWatch Observability Branch -->
+          <div class="aws-track track-obs">
+            <div class="track-header">
+              <span class="track-badge badge-obs">Observability Branch</span>
+              <span class="track-title">Asynchronous Monitoring, Structured Logs &amp; Alarms (Non-Blocking)</span>
+              <span class="track-protocol">CloudWatch Telemetry</span>
+            </div>
+            <div class="track-flow">
+              <div class="flow-node">
+                <span class="node-badge">Telemetry Emitter</span>
+                <h5>Lambda Stdout</h5>
+                <p>Structured JSON stdout logs emitted during processing (e.g. <code>VENUE_THRESHOLD_ALARM</code>).</p>
+                <span class="node-tag">Searchable JSON</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Stdout Log</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Log Stream</span>
+                <h5>CloudWatch Logs</h5>
+                <p>Log group <code>/aws/lambda/vit-telemetry-handler</code> with cost-controlled 7-day retention.</p>
+                <span class="node-tag">7-Day Retention</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Metric Filter</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Metric Filter</span>
+                <h5>Log Metric Filter</h5>
+                <p>Filter <code>vit-high-occupancy-filter</code> publishes <code>HighOccupancyAlerts</code> under <code>VITChennai/DigitalTwin</code>.</p>
+                <span class="node-tag">Filter Pattern</span>
+              </div>
+              <div class="flow-arrow">
+                <span class="arrow-symbol">➔</span>
+                <span class="arrow-label">Alarms Link</span>
+              </div>
+              <div class="flow-node">
+                <span class="node-badge">Monitoring</span>
+                <h5>Alarms &amp; Dashboard</h5>
+                <p>3 metric alarms (Errors, Throttles, Occupancy) &amp; unified dashboard <code>vit-campus-digital-twin-dashboard</code>.</p>
+                <span class="node-tag">Real-Time Ops</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Real Verified Data Flow Trace Card -->
+        <div class="aws-scenario-box">
+          <div class="scenario-header">
+            <div class="scenario-title-group">
+              <span class="scenario-pill">Verified Live Scenario</span>
+              <h4>Mahatma Gandhi Auditorium — High Occupancy Threshold Alert</h4>
+            </div>
+            <span class="scenario-status-chip status-high">HIGH [ALARM ACTIVE]</span>
+          </div>
+
+          <div class="scenario-metrics-grid">
+            <div class="sc-metric">
+              <span class="sc-label">Target Venue</span>
+              <span class="sc-value">Building024 (MG Auditorium)</span>
+            </div>
+            <div class="sc-metric">
+              <span class="sc-label">Occupancy / Capacity</span>
+              <span class="sc-value">2,150 / 2,400 seats</span>
+            </div>
+            <div class="sc-metric">
+              <span class="sc-label">Derived Utilization</span>
+              <span class="sc-value highlight-orange">89.6% (2150 ÷ 2400 × 100)</span>
+            </div>
+            <div class="sc-metric">
+              <span class="sc-label">Pedestrian Flow</span>
+              <span class="sc-value">+25 people/min</span>
+            </div>
+            <div class="sc-metric">
+              <span class="sc-label">Source Identifier</span>
+              <span class="sc-value mono">IOT_MQTT_TURNSTILE</span>
+            </div>
+            <div class="sc-metric">
+              <span class="sc-label">Threshold Alert</span>
+              <span class="sc-value highlight-red">TRIGGERED (&ge; 80% Safety Limit)</span>
+            </div>
+          </div>
+
+          <div class="scenario-sequence">
+            <span class="seq-step"><strong>1. Synthetic Event:</strong> PowerShell script constructs reading (2,150 seats, +25 flow).</span>
+            <span class="seq-arrow">➔</span>
+            <span class="seq-step"><strong>2. AWS IoT Core:</strong> Ingested via TLS 1.2 on topic <code>vit/campus/Building024/telemetry</code>.</span>
+            <span class="seq-arrow">➔</span>
+            <span class="seq-step"><strong>3. Topic Rule:</strong> Matches SQL and invokes Lambda asynchronously.</span>
+            <span class="seq-arrow">➔</span>
+            <span class="seq-step"><strong>4. Lambda Compute:</strong> Calculates 89.6%, flags <code>HIGH</code>, logs <code>VENUE_THRESHOLD_ALARM</code>.</span>
+            <span class="seq-arrow">➔</span>
+            <span class="seq-step"><strong>5. DynamoDB Transaction:</strong> Atomically updates <code>sk: 'LATEST'</code> &amp; appends <code>sk: 'TS#...'</code>.</span>
+            <span class="seq-arrow">➔</span>
+            <span class="seq-step"><strong>6. Cloud Sync:</strong> Frontend polls state, tints 3D auditorium amber, and computes egress time (~5m 7s).</span>
+          </div>
+        </div>
+
+        <!-- Educational Service Guide -->
+        <div class="aws-services-section">
+          <h4 class="section-heading">AWS Services Architectural Roles &amp; Decisions</h4>
+          <div class="aws-service-grid">
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-iot">AWS IoT Core vs. API Gateway</span>
+                <h5>Edge MQTT vs. Web HTTPS</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> IoT Core handles edge sensors; API Gateway handles browser clients.</li>
+                <li><strong>Why Chosen:</strong> Edge turnstiles require lightweight MQTT (2-byte packet headers, persistent TLS, pub/sub decoupling) to avoid HTTP request-response overhead. Browsers use HTTPS with CORS and 10 req/s stage rate limits.</li>
+              </ul>
+            </div>
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-iot">AWS IoT Rules Engine</span>
+                <h5>Serverless Event Router</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> Inspects MQTT payloads with SQL <code>SELECT * FROM 'vit/campus/Building024/telemetry'</code> and invokes Lambda.</li>
+                <li><strong>Why Chosen:</strong> Decouples message ingestion from compute. Eliminates running always-on EC2 subscriber daemons, scaling instantly to zero.</li>
+              </ul>
+            </div>
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-api">AWS Lambda (Node.js 22.x)</span>
+                <h5>Server-Authoritative Compute</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> Validates input, calculates utilization &amp; status, logs structured JSON, and coordinates atomic persistence.</li>
+                <li><strong>Why Chosen:</strong> Enforces server authority so clients cannot forge capacities or safety levels. Graviton2 (arm64) provides fast execution with zero idle cost.</li>
+              </ul>
+            </div>
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-api">Amazon DynamoDB</span>
+                <h5>Single-Table NoSQL Storage</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> Composite key design (<code>venueId</code> PK + <code>sk</code> SK). Stores instant hot state (<code>sk: 'LATEST'</code>) and historical items (<code>sk: 'TS#...'</code>).</li>
+                <li><strong>Why Chosen:</strong> Single-digit millisecond latency. <code>TransactWriteItems</code> provides all-or-nothing atomicity. 7-day TTL automatically cleans up audit logs.</li>
+              </ul>
+            </div>
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-cdn">Amazon S3 &amp; CloudFront</span>
+                <h5>Private Origin &amp; Global CDN</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> S3 securely stores the 20.3 MB 3D model &amp; assets; CloudFront delivers them over HTTPS via Origin Access Control (OAC).</li>
+                <li><strong>Why Chosen:</strong> S3 Block Public Access prevents unauthorized exposure. CloudFront edge caches the heavy 3D GLB model for low-latency worldwide delivery.</li>
+              </ul>
+            </div>
+
+            <div class="aws-service-card">
+              <div class="card-top">
+                <span class="service-badge badge-obs">Amazon CloudWatch</span>
+                <h5>Asynchronous Observability</h5>
+              </div>
+              <ul class="service-bullets">
+                <li><strong>Responsibility:</strong> Collects Lambda structured logs, extracts metrics via metric filter, evaluates 3 alarms, and renders the ops dashboard.</li>
+                <li><strong>Why Chosen:</strong> Non-blocking observability branch. Allows administrators to verify successful ingestion and debug failures without impacting telemetry writes.</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Academic Integrity Notice -->
+        <div class="aws-disclaimer-box">
+          <div class="disclaimer-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <strong>Academic Integrity &amp; Simulation Disclosure</strong>
+          </div>
+          <p>
+            All occupancy metrics, pedestrian flow rates, door discharge values, and safety thresholds are simulated demonstration data strictly stamped with <code>isSimulated: true</code>. No physical optical turnstiles, door sensors, or cameras are connected to campus doors. Perimeter evacuation calculations demonstrate algorithmic Dijkstra shortest-path calculations across 278 waypoints and are not certified life-safety audits.
+          </p>
+        </div>
+
+        <!-- Potential Future Enhancements (Visually distinct, secondary roadmap) -->
+        <div class="aws-future-section">
+          <div class="future-header">
+            <span class="future-badge">Proposed / Roadmap</span>
+            <h4>Potential Future Enhancements (Not Currently Deployed)</h4>
+          </div>
+          <p class="future-intro">
+            The following capabilities represent conceptual architectural extensions for a production campus-wide deployment, clearly separated from our verified demonstration:
+          </p>
+          <div class="future-grid">
+            <div class="future-item">
+              <span class="future-pill">Edge Hardware</span>
+              <h6>Physical IoT Turnstiles</h6>
+              <p>ESP32 microcontrollers with optical break-beams authenticated via mutual TLS (X.509 certs).</p>
+            </div>
+            <div class="future-item">
+              <span class="future-pill">Real-Time Push</span>
+              <h6>WebSockets / AppSync</h6>
+              <p>Sub-second push delivery via AWS AppSync GraphQL subscriptions replacing 5s client polling.</p>
+            </div>
+            <div class="future-item">
+              <span class="future-pill">Computer Vision</span>
+              <h6>Amazon Kinesis Video</h6>
+              <p>Video ingestion with AWS Panorama &amp; YOLOv8 edge object detection for automated head-counting.</p>
+            </div>
+            <div class="future-item">
+              <span class="future-pill">Predictive AI</span>
+              <h6>Amazon SageMaker</h6>
+              <p>Machine learning models forecasting venue congestion 30 minutes in advance using class timetables.</p>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

@@ -13,6 +13,7 @@ AI_notes/
 SESSION_NOTES.md
 scratch/
 certs/
+docs/
 *.pem
 *.crt
 *.key
