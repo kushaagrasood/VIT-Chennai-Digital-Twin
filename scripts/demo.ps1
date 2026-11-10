@@ -29,6 +29,16 @@ param (
     [switch]$Check,
     [switch]$Demo,
     [switch]$Setup,
+    [switch]$Teardown,
+    [ValidateSet("Preserve", "Empty", "Delete")]
+    [string]$S3Action = "Preserve",
+    [switch]$EmptyS3,
+    [switch]$DeleteS3,
+    [ValidateSet("Delete", "Preserve")]
+    [string]$CloudFrontAction = "Delete",
+    [switch]$DeleteCloudFront,
+    [switch]$SkipCloudFront,
+    [switch]$ResetLocalConfig,
 
     [ValidateSet("Normal", "High", "Alert", "Reset")]
     [string]$Scenario = "Normal",
@@ -37,6 +47,7 @@ param (
     [string]$Profile = $(if ($env:AWS_PROFILE -and $env:AWS_PROFILE.Trim() -ne "") { $env:AWS_PROFILE.Trim() } else { "vit-deploy" }),
     [string]$ExpectedAccount = "672791231004",
     [string]$DistributionId = "E2NGCY20SE2WWQ",
+    [string]$OacId = "E1JUXBAG645J5A",
     [string]$Domain = "d457wl1fwy7gg.cloudfront.net",
     [string]$Bucket = "vit-chennai-digital-twin-672791231004",
     [string]$TableName = "vit-campus-telemetry",
@@ -51,6 +62,7 @@ param (
     [string]$VenueId = "Building024",
 
     [switch]$Force,
+    [switch]$DryRun,
     [switch]$OfflineTest
 )
 
@@ -139,6 +151,8 @@ if ($Check -or ($Mode -and $Mode.ToLower() -eq "check")) {
     $effectiveAction = "Check"
 } elseif ($Setup -or ($Mode -and $Mode.ToLower() -eq "setup")) {
     $effectiveAction = "Setup"
+} elseif ($Teardown -or ($Mode -and ($Mode.ToLower() -eq "teardown" -or $Mode.ToLower() -eq "destroy"))) {
+    $effectiveAction = "Teardown"
 } elseif ($Demo -or ($Mode -and ($Mode.ToLower() -eq "demo" -or $Mode.ToLower() -in @("normal", "high", "alert", "reset")))) {
     $effectiveAction = "Demo"
     if ($Mode -and $Mode.ToLower() -in @("normal", "high", "alert", "reset")) {
@@ -1135,6 +1149,17 @@ function Show-HelpGuide {
     Write-Host "   Provisions Stages 1-3, updates config, builds Vite, deploys to S3/CloudFront." -ForegroundColor DarkGray
     Write-Host "   Command:  .\scripts\demo.ps1 -Setup" -ForegroundColor Yellow
     Write-Host ""
+    Write-Host "4. DEALLOCATE / TEARDOWN AWS RESOURCES:" -ForegroundColor Cyan
+    Write-Host "   Safely deallocates project AWS cloud resources in reverse-dependency order." -ForegroundColor DarkGray
+    Write-Host "   Local files, private keys, certificates, reports, and source code are strictly preserved." -ForegroundColor DarkGray
+    Write-Host "   Commands:" -ForegroundColor Yellow
+    Write-Host "     .\scripts\demo.ps1 -Teardown                          # Deallocates CloudFront, API, Lambda, IoT, DynamoDB (Preserves S3 bucket)" -ForegroundColor White
+    Write-Host "     .\scripts\demo.ps1 -Teardown -DryRun                  # Read-only audit simulation of planned teardown" -ForegroundColor White
+    Write-Host "     .\scripts\demo.ps1 -Teardown -EmptyS3                 # Also empties all S3 bucket objects & versions" -ForegroundColor White
+    Write-Host "     .\scripts\demo.ps1 -Teardown -DeleteS3                # Empties and deletes the S3 bucket" -ForegroundColor White
+    Write-Host "     .\scripts\demo.ps1 -Teardown -SkipCloudFront          # Preserves CloudFront & OAC" -ForegroundColor White
+    Write-Host "     .\scripts\demo.ps1 -Teardown -Force                   # Bypasses the interactive confirmation prompt" -ForegroundColor White
+    Write-Host ""
     Write-Host "Live CloudFront URL: https://$Domain" -ForegroundColor Cyan
     Write-Host "Target AWS Profile:  $Profile (Account: $ExpectedAccount, Region: $Region)" -ForegroundColor DarkGray
     Write-Host "==============================================================================`n" -ForegroundColor Cyan
@@ -1144,8 +1169,34 @@ function Show-HelpGuide {
 # DISPATCH CONTROLLER
 # ==============================================================================
 switch ($effectiveAction) {
-    "Check" { Run-HealthCheck }
-    "Demo"  { Run-DemoScenario -ChosenScenario $Scenario }
-    "Setup" { Run-FirstTimeSetup }
+    "Check"    { Run-HealthCheck }
+    "Demo"     { Run-DemoScenario -ChosenScenario $Scenario }
+    "Setup"    { Run-FirstTimeSetup }
+    "Teardown" {
+        $teardownScript = Join-Path $PSScriptRoot "teardown.ps1"
+        $teardownParams = @{
+            Region           = $Region
+            Profile          = $Profile
+            ExpectedAccount  = $ExpectedAccount
+            DistributionId   = $DistributionId
+            OacId            = $OacId
+            Bucket           = $Bucket
+            TableName        = $TableName
+            LambdaName       = $LambdaName
+            RoleName         = $RoleName
+            ApiName          = $ApiName
+            ThingName        = $ThingName
+            PolicyName       = $PolicyName
+            RuleName         = $RuleName
+            DashboardName    = $DashboardName
+            S3Action         = $(if ($DeleteS3) { "Delete" } elseif ($EmptyS3) { "Empty" } else { $S3Action })
+            CloudFrontAction = $(if ($SkipCloudFront) { "Preserve" } elseif ($DeleteCloudFront) { "Delete" } else { $CloudFrontAction })
+        }
+        if ($Force) { $teardownParams["Force"] = $true }
+        if ($DryRun) { $teardownParams["DryRun"] = $true }
+        if ($OfflineTest) { $teardownParams["OfflineTest"] = $true }
+        if ($ResetLocalConfig) { $teardownParams["ResetLocalConfig"] = $true }
+        & $teardownScript @teardownParams
+    }
     Default { Show-HelpGuide }
 }
