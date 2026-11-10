@@ -1,6 +1,6 @@
 # VIT Chennai Campus AI Digital Twin
 
-> **Cloud Architecture & Design (CAD) — Semester 5 Project**  
+> **Cloud Architecture & Design (CAD) Project**  
 > *Vellore Institute of Technology (VIT), Chennai*
 
 [![AWS Architecture](https://img.shields.io/badge/AWS-Serverless-orange.svg)](https://aws.amazon.com/)
@@ -10,6 +10,7 @@
 [![License](https://img.shields.io/badge/License-Academic%20Demo-lightgrey.svg)](#academic-integrity--simulation-disclosure)
 
 An interactive, cloud-connected **3D Digital Twin of the VIT Chennai Campus**, integrating serverless edge-to-cloud IoT telemetry ingestion, dual-state NoSQL persistence, real-time spatial WebGL rendering, and algorithmic Dijkstra perimeter evacuation routing.
+<img width="2457" height="1540" alt="Screenshot 2026-10-30 162708" src="https://github.com/user-attachments/assets/d90e3e2a-70ed-48a7-a2ab-e4e6e528b41b" />
 
 > [!NOTE]
 > **Project & Cloud Status:**  
